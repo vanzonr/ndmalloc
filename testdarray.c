@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "amalloc.h"
+#include "damalloc.h"
 
 int main()
 {

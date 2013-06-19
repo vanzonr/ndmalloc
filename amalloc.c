@@ -1,13 +1,14 @@
 /*
- * darray.c
+ * amalloc.c
  *
- * Implementation of the darray library, which can make arbitrary
+ * Implementation of the amalloc library, which can make arbitrary
  * multi-dimensional c arrays. 
  *
  * Copyright (c) 2013 Ramses van Zon
  */
 
 #include "amalloc.h"
+#include "damalloc.h"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -246,7 +247,7 @@ darray da__vdrealloc( darray   darr,
     size_t   i, total_elements;
 
     free(darr.shape);
-    free((char*)darr.array + header_size);
+    free((char*)darr.array - header_size);
 
     shape = malloc(sizeof(size_t)*rank);
     if (shape == NULL) 
@@ -620,7 +621,7 @@ size_t arank(void* arr)
 {
     header_t* hdr = da__get_header(arr);
     if (da__is_header(hdr))
-        return hdr->rank;
+        return hdr->rank & magic_unmask;
     else
         return 0;
 }
