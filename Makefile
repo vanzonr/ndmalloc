@@ -2,9 +2,9 @@
 #CC=tcc
 LDLIBS=-lm
 LDFLAGS=
-CFLAGS=-O3 -DNDEBUG
+CFLAGS=-Wall -O3 -DNDEBUG
 DBGLDFLAGS=-g
-DBGCFLAGS=-O0 -g
+DBGCFLAGS=-O0 -g -Wall
 
 all: testdarray testdarray_dbg testdarray2 testdarray2_dbg
 
@@ -39,4 +39,4 @@ testdarray2_dbg.o: testdarray2.c
 	${CC} ${DBGCFLAGS} -c -o $@ $^ 
 
 clean:
-	\rm -f testdarray.o darray.o testdarray_dbg.o darray_dbg.o
+	\rm -f testdarray2.o testdarray2_dbg.o testdarray.o testdarray_dbg.o darray.o darray_dbg.o

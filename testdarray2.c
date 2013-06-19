@@ -5,7 +5,7 @@
 
 void fill(double** array)
 {
-  assert(isdarray(array));
+  assert(aisd(array));
   const int n = extentof(array,0);
   const int m = extentof(array,1);
   int i, j;

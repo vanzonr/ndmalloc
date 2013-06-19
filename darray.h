@@ -1,8 +1,8 @@
 /*
  * darray.h
  *
- * Header file for the darray library, which can make arbitrary
- * multi-dimensional c arrays. 
+ * Header file for dynamically allocated multi-dimensional c arrays of
+ * arbitrary rank.
  *
  * Copyright (c) 2013 Ramses van Zon
  */
@@ -15,18 +15,18 @@
 
 /*     *     *     *     *     *     *     *     *\
  
- *    First interface using darray structure     *
+ *    FIRST INTERFACE USING DARRAY STRUCTURE     *
 
  *     *     *     *     *     *     *     *     */
 
 
 /* Define the structure */
 typedef struct {
-  void*   array;           /* Pointer-to-pointer structure       */
-  void*   data;            /* Pointer to the contiguous elements */
-  size_t  element_size;    /* How big is each element?           */
-  size_t  number_extents;  /* How many dimensions are there?     */
-  size_t* extent;          /* What are those dimensions?         */
+  void*   array;        /* Pointer-to-pointer structure       */
+  void*   data;         /* Pointer to the contiguous elements */
+  size_t  size;         /* How big is each element?           */
+  size_t  rank;         /* How many dimensions are there?     */
+  size_t* shape;        /* What are those dimensions?         */
 } darray;
 
 /* Define a darray constant that takes the place of the NULL pointer */
@@ -34,9 +34,9 @@ typedef struct {
 
 /* Mimic the regular malloc/free/calloc/realloc set, but with darray
    instead of void*: (Note: ... is a list of integer extents) */
-darray dmalloc(size_t size, size_t nextents, ...);
-darray dcalloc(size_t size, size_t nextents, ...);
-darray drealloc(darray darr, size_t size, size_t nextents, ...);
+darray dmalloc(size_t size, size_t rank, ...);
+darray dcalloc(size_t size, size_t rank, ...);
+darray drealloc(darray darr, size_t size, size_t rank, ...);
 void   dfree(darray darr);
 
 /* Function to get the extent in any given dimension. */
@@ -53,22 +53,22 @@ void dset(void* x, darray a, ...);
 
 /*     *     *     *     *     *     *\
 
- *    Second interface using void*s  *
+ *   SECOND INTERFACE USING void*S   *
 
 \*     *     *     *     *     *     */
 
 
 /* Mimic the regular malloc/free/calloc/realloc set */
-void* amalloc(size_t size, size_t nextents, ...);
-void* acalloc(size_t size, size_t nextents, ...);
-void* arealloc(void* arr, size_t size, size_t nextents, ...);
+void* amalloc(size_t size, size_t rank, ...);
+void* acalloc(size_t size, size_t rank, ...);
+void* arealloc(void* arr, size_t size, size_t rank, ...);
 void  afree(void* arr);
 
 /* Function to get the extent in any given dimension. */
-size_t extentof(void* arr, size_t dim);
+size_t aextentof(void* arr, size_t dim);
 
 /* Function to check if this is a darray. */
-int isdarray(void* arr);
+int aisd(void* arr);
 
 
 /*     *     *     *     *     *     *     *     *\

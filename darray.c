@@ -17,16 +17,16 @@
 /* Define a partial darray struct, just enough to be able to convert
    say a double** to a darray.  This header will be before the
    addresses hold in the data and array pointers in the darray
-   struct. A special magic_mark is added to the number_extents field,
+   struct. A special magic_mark is added to the rank field,
    as a check that we do indeed have a darray struct. */
 typedef struct {
-  void*   data;            // data, same as in darray
-  size_t  element_size;    // element_size, same as in darray
-  size_t  number_extents;  // same as in darray, but with magic_mark added
-  size_t* extent;          // same as in darray
+  void*   data;    // same as in darray
+  size_t  size;    // same as in darray
+  size_t  rank;    // same as in darray, but with magic_mark added
+  size_t* shape;   // same as in darray
 } header;
 
-/* The magic mark to be embedded in number_extents */
+/* The magic mark to be embedded in rank */
 #define magic_mark       0x19720000
 #define magic_mask       0xffff0000
 #define magic_unmask     0x0000ffff
@@ -56,8 +56,8 @@ static header* da_get_header(void* array)
 /* Mark a given header with the correct magic stamp */
 static void da_mark_header(header* hdr)
 {
-  hdr->number_extents &= magic_unmask;
-  hdr->number_extents |= magic_mark;
+  hdr->rank &= magic_unmask;
+  hdr->rank |= magic_mark;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
@@ -65,7 +65,7 @@ static void da_mark_header(header* hdr)
 /* Check that a given header has the correct magic stamp */
 static int da_is_header(header* hdr)
 {
-  return (hdr->number_extents & magic_mask) == magic_mark;
+  return (hdr->rank & magic_mask) == magic_mark;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
@@ -73,28 +73,28 @@ static int da_is_header(header* hdr)
 /* Create a darray structure and prepend its array with a header */
 static darray da_create( void*   array,
                          void*   data,
-                         size_t  element_size,
-                         size_t  number_extents,
-                         size_t* extent )
+                         size_t  size,
+                         size_t  rank,
+                         size_t* shape )
 {  
   header* hdr = da_get_header(array);
-  hdr->data           = data;
-  hdr->element_size   = element_size;
-  hdr->number_extents = number_extents;
-  hdr->extent         = extent;
+  hdr->data  = data;
+  hdr->size  = size;
+  hdr->rank  = rank;
+  hdr->shape = shape;
   da_mark_header(hdr);
-  return (darray){array, data, element_size, number_extents, extent};
+  return (darray){array, data, size, rank, shape};
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
 /* Create the pointer-to-pointer structure for any rank */
 static void* da_pointer_structure( void*   data,
-                                   size_t  element_size,
-                                   size_t  number_extents,
-                                   size_t* extent )
+                                   size_t  size,
+                                   size_t  rank,
+                                   size_t* shape )
 {
-  if (number_extents <= 1) {
+  if (rank <= 1) {
 
     return data;
 
@@ -107,8 +107,8 @@ static void* da_pointer_structure( void*   data,
     char*** ptr;
 
     nalloc = 0;
-    for (i = number_extents-1; i--; )
-      nalloc = extent[i]*(1+nalloc);
+    for (i = rank-1; i--; )
+      nalloc = shape[i]*(1+nalloc);
 
     palloc = (char**)calloc(nalloc + header_ptr_size, sizeof(char*));
     if (palloc == NULL)
@@ -117,131 +117,131 @@ static void* da_pointer_structure( void*   data,
 
     ntot = 1;   
     ptr = &result;
-    for (i = 0; i < number_extents - 1; i++) {    
+    for (i = 0; i < rank - 1; i++) {    
       for (j = 0; j < ntot; j++)
-        ptr[j] = palloc + j*extent[i];      
+        ptr[j] = palloc + j*shape[i];      
       ptr = (char***)(*ptr);
-      ntot *= extent[i];
+      ntot *= shape[i];
       palloc += ntot;
     }
     for (j = 0; j < ntot; j++)
       ptr[j] = (char**)((char*)data 
-                        + element_size*j*extent[number_extents-1]);
+                        + size*j*shape[rank-1]);
     return (void*)result;
   }
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-static darray vdmalloc(size_t size, size_t nextents, va_list arglist)
+static darray da_vdmalloc(size_t size, size_t rank, va_list arglist)
 {
   void*    array;
   void*    data;
-  size_t*  extent;
+  size_t*  shape;
   size_t   i, total_elements;
 
-  extent = malloc(sizeof(size_t)*nextents);
-  if (extent == NULL) 
+  shape = malloc(sizeof(size_t)*rank);
+  if (shape == NULL) 
     return DNULL;
 
-  for (i = 0; i < nextents; i++) 
-    extent[i] = va_arg(arglist, size_t);
+  for (i = 0; i < rank; i++) 
+    shape[i] = va_arg(arglist, size_t);
 
   total_elements = 1;
-  for (i = 0; i < nextents; i++) 
-    total_elements *= extent[i];
+  for (i = 0; i < rank; i++) 
+    total_elements *= shape[i];
 
   data = malloc(total_elements*size + header_size);
   if (data == NULL) {
-    free(extent);
+    free(shape);
     return DNULL;
   }
   data = (char*)data + header_size;
 
-  array = da_pointer_structure(data, size, nextents, extent);
+  array = da_pointer_structure(data, size, rank, shape);
   if (array == NULL) {
-    free(extent);
+    free(shape);
     free((char*)data - header_size);
     return DNULL;
   } else 
-    return da_create(array, data, size, nextents, extent);
+    return da_create(array, data, size, rank, shape);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-static darray vdcalloc(size_t size, size_t nextents, va_list arglist)
+static darray da_vdcalloc(size_t size, size_t rank, va_list arglist)
 {
   void*    array;
   void*    data;
-  size_t*  extent;
+  size_t*  shape;
   size_t   i, total_elements;
 
-  extent = malloc(sizeof(size_t)*nextents);
-  if (extent == NULL) 
+  shape = malloc(sizeof(size_t)*rank);
+  if (shape == NULL) 
     return DNULL;
 
-  for (i = 0; i < nextents; i++) 
-    extent[i] = va_arg(arglist, size_t);
+  for (i = 0; i < rank; i++) 
+    shape[i] = va_arg(arglist, size_t);
 
   total_elements = 1;
-  for (i = 0; i < nextents; i++) 
-    total_elements *= extent[i];
+  for (i = 0; i < rank; i++) 
+    total_elements *= shape[i];
 
   size_t chunks = (total_elements*size+header_size+mem_align_bytes-1)/mem_align_bytes;
   data = calloc(chunks, mem_align_bytes);
   if (data == NULL) {
-    free(extent);
+    free(shape);
     return DNULL;
   }
   data = (char*)data + header_size;
 
-  array = da_pointer_structure(data, size, nextents, extent);
+  array = da_pointer_structure(data, size, rank, shape);
   if (array == NULL) {
-    free(extent);
+    free(shape);
     free((char*)data - header_size);
     return DNULL;
   } else
-    return da_create(array, data, size, nextents, extent);
+    return da_create(array, data, size, rank, shape);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-static darray vdrealloc(darray darr, size_t size, size_t nextents, va_list arglist)
+static darray da_vdrealloc(darray darr, size_t size, size_t rank, va_list arglist)
 {
   void*    array;
   void*    data;
-  size_t*  extent;
+  size_t*  shape;
   size_t   i, total_elements;
 
-  free(darr.extent);
+  free(darr.shape);
   free((char*)darr.array + header_size);
 
-  extent = malloc(sizeof(size_t)*nextents);
-  if (extent == NULL) 
+  shape = malloc(sizeof(size_t)*rank);
+  if (shape == NULL) 
     return DNULL;
 
-  for (i = 0; i < nextents; i++) 
-    extent[i] = va_arg(arglist, size_t);
+  for (i = 0; i < rank; i++) 
+    shape[i] = va_arg(arglist, size_t);
 
   total_elements = 1;
-  for (i = 0; i < nextents; i++) 
-    total_elements *= extent[i];
+  for (i = 0; i < rank; i++) 
+    total_elements *= shape[i];
 
   data = realloc((char*)darr.data - header_size, 
                  total_elements*size + header_size);
   if (data == NULL) {
-    free(extent);
+    free(shape);
     return DNULL;
   }
   data = (char*)data + header_size;
 
-  array = da_pointer_structure(data, size, nextents, extent);
+  array = da_pointer_structure(data, size, rank, shape);
   if (array == NULL) {
-    free(extent);
+    free(shape);
     free((char*)data - header_size);
     return DNULL;
   } else
-    return da_create(array, data, size, nextents, extent);
+    return da_create(array, data, size, rank, shape);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
@@ -252,48 +252,48 @@ static darray vdrealloc(darray darr, size_t size, size_t nextents, va_list argli
 \*                            */
 
 
-darray dmalloc(size_t size, size_t nextents, ...)
+darray dmalloc(size_t size, size_t rank, ...)
 {
   darray result;
   va_list arglist;
-  va_start(arglist, nextents);
+  va_start(arglist, rank);
   #ifdef __TINYC__
   // tcc stdarg is off by one element in struct returning functions
   va_arg(arglist, size_t);
   #endif
-  result = vdmalloc(size, nextents, arglist);
+  result = da_vdmalloc(size, rank, arglist);
   va_end(arglist);
   return result;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-darray dcalloc(size_t size, size_t nextents, ...)
+darray dcalloc(size_t size, size_t rank, ...)
 {
   darray result;
   va_list arglist;
-  va_start(arglist, nextents);
+  va_start(arglist, rank);
   #ifdef __TINYC__
   // tcc stdarg is off by one element in struct returning functions
   va_arg(arglist, size_t);
   #endif
-  result = vdcalloc(size, nextents, arglist);
+  result = da_vdcalloc(size, rank, arglist);
   va_end(arglist);
   return result;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-darray drealloc(darray darr, size_t size, size_t nextents, ...)
+darray drealloc(darray darr, size_t size, size_t rank, ...)
 {
   darray result;
   va_list arglist;
-  va_start(arglist, nextents);
+  va_start(arglist, rank);
   #ifdef __TINYC__
   // tcc stdarg is off by one element in struct returning functions
   va_arg(arglist, size_t);
   #endif
-  result = vdrealloc(darr, size, nextents, arglist);
+  result = da_vdrealloc(darr, size, rank, arglist);
   va_end(arglist);
   return result;
 }
@@ -302,9 +302,9 @@ darray drealloc(darray darr, size_t size, size_t nextents, ...)
 
 void dfree(darray darr)
 {  
-  free(darr.extent);
+  free(darr.shape);
   free((char*)darr.data - header_size);
-  if (darr.number_extents > 1) 
+  if (darr.rank > 1) 
     free((char*)darr.array - header_size);
 }
 
@@ -312,7 +312,7 @@ void dfree(darray darr)
 
 size_t dextentof(darray darr, size_t dim)
 {
-  return (dim < darr.number_extents) ? darr.extent[dim] : 0;
+  return (dim < darr.rank) ? darr.shape[dim] : 0;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
@@ -326,16 +326,16 @@ void dget(void* x, darray a, ...)
 
   start = a.array;
   va_start(arglist, a);
-  for (i = 0; i < a.number_extents-1; i++) {
+  for (i = 0; i < a.rank-1; i++) {
     n = va_arg(arglist, size_t);
     start = (char**)(start[n]);
   }
   n = va_arg(arglist, size_t);
   va_end(arglist);
 
-  y = (void*)((char*)start + n*a.element_size);
+  y = (void*)((char*)start + n*a.size);
 
-  memcpy(x, y, a.element_size);  
+  memcpy(x, y, a.size);  
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
@@ -349,16 +349,16 @@ void dset(void* x, darray a, ...)
 
   start = a.array;
   va_start(arglist, a);
-  for (i = 0; i < a.number_extents-1; i++) {
+  for (i = 0; i < a.rank-1; i++) {
     n = va_arg(arglist, size_t);
     start = (char**)(start[n]);
   }
   n = va_arg(arglist, size_t);
   va_end(arglist);
 
-  y = (void*)((char*)start + n*a.element_size);
+  y = (void*)((char*)start + n*a.size);
 
-  memcpy(y, x, a.element_size); 
+  memcpy(y, x, a.size); 
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
@@ -378,9 +378,9 @@ darray atod(void* arr)
       {
         arr, 
         hdr->data, 
-        hdr->element_size, 
-        hdr->number_extents & magic_unmask, 
-        hdr->extent
+        hdr->size, 
+        hdr->rank & magic_unmask, 
+        hdr->shape
       };
   } else {
     return DNULL;
@@ -390,18 +390,18 @@ darray atod(void* arr)
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 int dnotnull(darray darr)
 {
-  return darr.array != NULL || darr.data != NULL || darr.extent != NULL
-    || darr.number_extents != 0 || darr.element_size != 0;
+  return darr.array != NULL || darr.data != NULL || darr.shape != NULL
+    || darr.rank != 0 || darr.size != 0;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-void* amalloc(size_t size, size_t nextents, ...)
+void* amalloc(size_t size, size_t rank, ...)
 {
   darray result;
   va_list arglist;
-  va_start(arglist, nextents);
-  result = vdmalloc(size, nextents, arglist);
+  va_start(arglist, rank);
+  result = da_vdmalloc(size, rank, arglist);
   va_end(arglist);
   if ( dnotnull(result) )
     return result.array;
@@ -411,12 +411,12 @@ void* amalloc(size_t size, size_t nextents, ...)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-void* acalloc(size_t size, size_t nextents, ...)
+void* acalloc(size_t size, size_t rank, ...)
 {
   darray result;
   va_list arglist;
-  va_start(arglist, nextents);
-  result = vdcalloc(size, nextents, arglist);
+  va_start(arglist, rank);
+  result = da_vdcalloc(size, rank, arglist);
   va_end(arglist);
   if ( dnotnull(result) )
     return result.array;
@@ -426,12 +426,12 @@ void* acalloc(size_t size, size_t nextents, ...)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-void* arealloc(void* arr, size_t size, size_t nextents, ...)
+void* arealloc(void* arr, size_t size, size_t rank, ...)
 {
   darray result;
   va_list arglist;
-  va_start(arglist, nextents);
-  result = vdrealloc(atod(arr), size, nextents, arglist);
+  va_start(arglist, rank);
+  result = da_vdrealloc(atod(arr), size, rank, arglist);
   va_end(arglist);
   
   if ( dnotnull(result) )
@@ -462,7 +462,7 @@ size_t extentof(void* arr, size_t dim)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-int isdarray(void* arr)
+int aisd(void* arr)
 {
   header* hdr = da_get_header(arr);
   return da_is_header(hdr);
