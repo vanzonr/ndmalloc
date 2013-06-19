@@ -1,3 +1,12 @@
+/*
+ * darray.h
+ *
+ * Implementation of the darray library, which can make arbitrary
+ * multi-dimensional c arrays. 
+ *
+ * Copyright (c) 2013 Ramses van Zon
+ */
+
 #include "darray.h"
 #include <stdlib.h>
 #include <stdarg.h>
@@ -5,6 +14,11 @@
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+/* Define a partial darray struct, just enough to be able to convert
+   say a double** to a darray.  This header will be before the
+   addresses hold in the data and array pointers in the darray
+   struct. A special magic_mark is added to the number_extents field,
+   as a check that we do indeed have a darray struct. */
 typedef struct {
   void*   data;            // data, same as in darray
   size_t  element_size;    // element_size, same as in darray
@@ -12,19 +26,26 @@ typedef struct {
   size_t* extent;          // same as in darray
 } header;
 
+/* The magic mark to be embedded in number_extents */
 #define magic_mark       0x19720000
 #define magic_mask       0xffff0000
 #define magic_unmask     0x0000ffff
+
+/* Define an alignment policy, such that the headers and the actual
+   data are a multiple of mem_align_bytes apart. */
 #define mem_align_x      4
 #define mem_align_bytes  (mem_align_x*sizeof(char*))
 #define header_size      (((sizeof(header)+mem_align_bytes-1) \
                           /mem_align_bytes)*mem_align_bytes)
 #define header_ptr_size  (header_size/sizeof(char*))
 
-/* INTERNAL ROUTINES START WITH 'da_' */
+/*                                    *\  
+   INTERNAL ROUTINES START WITH 'da_' 
+\*                                    */
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+/* Get the hidden header given the pointer-to-pointer array */
 static header* da_get_header(void* array)
 {
   return (header*)((char*)array - header_size);
@@ -32,6 +53,7 @@ static header* da_get_header(void* array)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+/* Mark a given header with the correct magic stamp */
 static void da_mark_header(header* hdr)
 {
   hdr->number_extents &= magic_unmask;
@@ -40,6 +62,7 @@ static void da_mark_header(header* hdr)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+/* Check that a given header has the correct magic stamp */
 static int da_is_header(header* hdr)
 {
   return (hdr->number_extents & magic_mask) == magic_mark;
@@ -47,6 +70,7 @@ static int da_is_header(header* hdr)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+/* Create a darray structure and prepend its array with a header */
 static darray da_create( void*   array,
                          void*   data,
                          size_t  element_size,
@@ -64,6 +88,7 @@ static darray da_create( void*   array,
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+/* Create the pointer-to-pointer structure for any rank */
 static void* da_pointer_structure( void*   data,
                                    size_t  element_size,
                                    size_t  number_extents,
@@ -106,11 +131,9 @@ static void* da_pointer_structure( void*   data,
   }
 }
 
-/* IMPLEMENTATION OF THE API */
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-darray vdmalloc(size_t size, size_t nextents, va_list arglist)
+static darray vdmalloc(size_t size, size_t nextents, va_list arglist)
 {
   void*    array;
   void*    data;
@@ -146,7 +169,7 @@ darray vdmalloc(size_t size, size_t nextents, va_list arglist)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-darray vdcalloc(size_t size, size_t nextents, va_list arglist)
+static darray vdcalloc(size_t size, size_t nextents, va_list arglist)
 {
   void*    array;
   void*    data;
@@ -183,7 +206,7 @@ darray vdcalloc(size_t size, size_t nextents, va_list arglist)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-darray vdrealloc(darray darr, size_t size, size_t nextents, va_list arglist)
+static darray vdrealloc(darray darr, size_t size, size_t nextents, va_list arglist)
 {
   void*    array;
   void*    data;
@@ -222,6 +245,12 @@ darray vdrealloc(darray darr, size_t size, size_t nextents, va_list arglist)
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
+
+
+/*                            *\ 
+   IMPLEMENTATION OF THE API
+\*                            */
+
 
 darray dmalloc(size_t size, size_t nextents, ...)
 {
@@ -430,6 +459,8 @@ size_t extentof(void* arr, size_t dim)
   else
     return 0;
 }
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
 int isdarray(void* arr)
 {
