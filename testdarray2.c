@@ -5,9 +5,9 @@
 
 void fill(double** array)
 {
-  assert(aisd(array));
-  const int n = extentof(array,0);
-  const int m = extentof(array,1);
+  assert(paisda(array));
+  const int n = paextentof(array,0);
+  const int m = paextentof(array,1);
   int i, j;
   for (i = 0; i < n; i++)
     for (j = 0; j < m; j++)
@@ -16,10 +16,10 @@ void fill(double** array)
 
 int main()
 {
-  double** a = amalloc(sizeof(double), 2, 10, 4);
+  double** a = pamalloc(sizeof(double), 2, 10, 4);
   fill(a);
   double z = a[9][3]; 
-  afree(a);
+  pafree(a);
   double** b = calloc(10,sizeof(double*));
   int k;
   for(k=0;k<10;k++)
