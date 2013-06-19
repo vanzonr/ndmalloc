@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include "darray.h"
 
-
 int main()
 {
   darray  _a = dcalloc(sizeof(double), 2, 10, 4);
-  double** a = (double**)_a.array;
+  double** a = (double**)(_a.array);
   // ^- should become 'double a[*][*] = dmalloc(sizeof(double), 2, 10, 4);'
   a[9][3] = 7;
   double y=8;

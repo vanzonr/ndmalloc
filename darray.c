@@ -89,7 +89,7 @@ static void* da_pointer_structure( void*   data,
     if (palloc == NULL)
       return NULL;
     palloc += header_ptr_size;
-    
+
     ntot = 1;   
     ptr = &result;
     for (i = 0; i < number_extents - 1; i++) {    
@@ -102,13 +102,11 @@ static void* da_pointer_structure( void*   data,
     for (j = 0; j < ntot; j++)
       ptr[j] = (char**)((char*)data 
                         + element_size*j*extent[number_extents-1]);
-
     return (void*)result;
-
   }
 }
 
-/* IMPLEMENTATION */
+/* IMPLEMENTATION OF THE API */
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
@@ -230,6 +228,10 @@ darray dmalloc(size_t size, size_t nextents, ...)
   darray result;
   va_list arglist;
   va_start(arglist, nextents);
+  #ifdef __TINYC__
+  // tcc stdarg is off by one element in struct returning functions
+  va_arg(arglist, size_t);
+  #endif
   result = vdmalloc(size, nextents, arglist);
   va_end(arglist);
   return result;
@@ -242,6 +244,10 @@ darray dcalloc(size_t size, size_t nextents, ...)
   darray result;
   va_list arglist;
   va_start(arglist, nextents);
+  #ifdef __TINYC__
+  // tcc stdarg is off by one element in struct returning functions
+  va_arg(arglist, size_t);
+  #endif
   result = vdcalloc(size, nextents, arglist);
   va_end(arglist);
   return result;
@@ -254,6 +260,10 @@ darray drealloc(darray darr, size_t size, size_t nextents, ...)
   darray result;
   va_list arglist;
   va_start(arglist, nextents);
+  #ifdef __TINYC__
+  // tcc stdarg is off by one element in struct returning functions
+  va_arg(arglist, size_t);
+  #endif
   result = vdrealloc(darr, size, nextents, arglist);
   va_end(arglist);
   return result;
