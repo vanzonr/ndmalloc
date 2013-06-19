@@ -7,7 +7,7 @@
  * Copyright (c) 2013 Ramses van Zon
  */
 
-#include "darray.h"
+#include "amalloc.h"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -298,8 +298,8 @@ darray da__vdrealloc( darray   darr,
  *  array are of size 'size'.  It returns a 'darray', which is a
  *  structure that contains the information about the multi-
  *  dimensional structure.  This structure can be used in calls to
- *  'darealloc', 'dafree', 'daextentof', 'danotnull', 'dadata',
- *  'darank', 'dashape', 'daget', 'daset', and 'datopa'.  If the
+ *  'darealloc', 'dafree', 'dasizeof', 'danotnull', 'dadata',
+ *  'darank', 'dashape', 'daget', 'daset', and 'datoa'.  If the
  *  memory allocation fails, a special darray structure called DNULL
  *  is returned.
  */
@@ -379,7 +379,7 @@ void dafree(darray darr)
 /* 
  * Function to get the extent in any given dimension. 
  */
-size_t daextentof(darray darr, size_t dim)
+size_t dasizeof(darray darr, size_t dim)
 {
     return (dim < darr.rank) ? darr.shape[dim] : 0;
 }
@@ -467,7 +467,7 @@ void daset(void* x, darray a, ...)
 /* 
  *  Convert to TYPE** or similar 
  */
-void* datopa(darray darr)
+void* datoa(darray darr)
 {
     return darr.array;
 }
@@ -475,7 +475,7 @@ void* datopa(darray darr)
 /* 
  *  Convert back from type** to a darray 
  */
-darray patoda(void* arr)
+darray atoda(void* arr)
 {
     header_t* hdr = da__get_header(arr);
     if (da__is_header(hdr)) {
@@ -492,7 +492,7 @@ darray patoda(void* arr)
 }
 
 /*
- *  The 'pamalloc' function creates a dynamically allocated multi-
+ *  The 'amalloc' function creates a dynamically allocated multi-
  *  dimensional array of dimensions n[0] x n[1] ... x n['rank'-1],
  *  with elements of 'size' bytes.  The dimensions are to be given as
  *  the variable-length arguments.  The function allocates
@@ -507,13 +507,13 @@ darray patoda(void* arr)
  *  way a c-style array is used, i.e., with repeated square bracket
  *  indexing.  If the memory allocation fails, a NULL pointer is
  *  returned.  The return value (or its casted version) can be used in
- *  calls to 'parealloc', 'pafree', 'paextentof', 'padata', 'parank',
- *  'pashape', 'paisda', and 'patoda'.  This works because an internal
+ *  calls to 'arealloc', 'afree', 'asizeof', 'adata', 'arank',
+ *  'ashape', 'aknown', and 'atoda'.  This works because an internal
  *  header containing the information about the multi-dimensional
  *  structure is associated with each dynamicaly allocated
  *  multi-dimensional array.
  */
-void* pamalloc(size_t size, size_t rank, ...)
+void* amalloc(size_t size, size_t rank, ...)
 {
     darray result;
     va_list arglist;
@@ -527,10 +527,10 @@ void* pamalloc(size_t size, size_t rank, ...)
 }
 
 /*
- *  The 'pacalloc' function has the same functionality as pamalloc, but
+ *  The 'acalloc' function has the same functionality as amalloc, but
  *  also initialized the array to all zeros (by calling 'calloc').
  */
-void* pacalloc(size_t size, size_t rank, ...)
+void* acalloc(size_t size, size_t rank, ...)
 {
     darray result;
     va_list arglist;
@@ -544,7 +544,7 @@ void* pacalloc(size_t size, size_t rank, ...)
 }
 
 /*
- *  The 'parealloc' function chances the dimensions and/or the size of
+ *  The 'arealloc' function chances the dimensions and/or the size of
  *  the multi-dimenstional array 'arr'.  The content of the array
  *  will be unchanged in the range from the start of the region up to
  *  the minimum of the old and new sizes.  If the change in dimensions
@@ -552,14 +552,14 @@ void* pacalloc(size_t size, size_t rank, ...)
  *  according to the row-major ordering.  If the re-allocation is
  *  succesful, the new pointer is returned and the old one is invalid.
  *  If the function fails, NULL is returned.  Known bug: the original
- *  'arr' is still deallocated when 'parealloc' fails.
+ *  'arr' is still deallocated when 'arealloc' fails.
  */
-void* parealloc(void* arr, size_t size, size_t rank, ...)
+void* arealloc(void* arr, size_t size, size_t rank, ...)
 {
     darray result;
     va_list arglist;
     va_start(arglist, rank);
-    result = da__vdrealloc(patoda(arr), size, rank, arglist);
+    result = da__vdrealloc(atoda(arr), size, rank, arglist);
     va_end(arglist);
     if ( danotnull(result) )
         return result.array;
@@ -568,12 +568,12 @@ void* parealloc(void* arr, size_t size, size_t rank, ...)
 }
 
 /*
- *  The 'pafree' function frees up all the memory allocated for the
+ *  The 'afree' function frees up all the memory allocated for the
  *  multi-dimensional array associates with the pointer 'arr'.
  */
-void pafree(void* arr)
+void afree(void* arr)
 {
-  darray darr = patoda(arr);
+  darray darr = atoda(arr);
   if ( danotnull(darr) )
     dafree(darr);
 }
@@ -584,11 +584,11 @@ void pafree(void* arr)
  * about the multi-dimensional structure is associated with each
  * dynamicaly allocated multi-dimensional array.
  */
-size_t paextentof(void* arr, size_t dim)
+size_t asizeof(void* arr, size_t dim)
 {
-    darray darr = patoda(arr);
+    darray darr = atoda(arr);
     if ( danotnull(darr) )
-        return daextentof(darr, dim);
+        return dasizeof(darr, dim);
     else
         return 0;
 }
@@ -600,7 +600,7 @@ size_t paextentof(void* arr, size_t dim)
  * dynamicaly allocated multi-dimensional array.  Returns NULL if no
  * darray is associated with arr.
  */
-void* padata(void* arr)
+void* adata(void* arr)
 {
     header_t* hdr = da__get_header(arr);
     if (da__is_header(hdr))
@@ -616,7 +616,7 @@ void* padata(void* arr)
  * dynamicaly allocated multi-dimensional array.  Returns 0 if no
  * darray is associated with arr.
  */
-size_t parank(void* arr)
+size_t arank(void* arr)
 {
     header_t* hdr = da__get_header(arr);
     if (da__is_header(hdr))
@@ -632,7 +632,7 @@ size_t parank(void* arr)
  * allocated multi-dimensional array. Returns NULL if no darray is
  * associated with arr.
  */
-const size_t* pashape(void* arr)
+const size_t* ashape(void* arr)
 {
     header_t* hdr = da__get_header(arr);
     if (da__is_header(hdr))
@@ -647,7 +647,7 @@ const size_t* pashape(void* arr)
  * about the multi-dimensional structure is associated with each
  * dynamicaly allocated multi-dimensional array.
  */
-int paisda(void* arr)
+int aknown(void* arr)
 {
     header_t* hdr = da__get_header(arr);
     return da__is_header(hdr);

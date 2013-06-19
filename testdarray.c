@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "darray.h"
+#include "amalloc.h"
 
 int main()
 {
