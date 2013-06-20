@@ -5,6 +5,9 @@ LDFLAGS=
 CFLAGS=-Wall -O3 -DNDEBUG
 DBGLDFLAGS=-g
 DBGCFLAGS= -Wall -O0 -DDEBUG -g
+#PROFLAG=-pg
+PRFLDFLAGS=-g ${PROFLAG}
+PRFCFLAGS= -Wall -O2 -DDEBUG -g ${PROFLAG}
 
 all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg
 
@@ -34,6 +37,9 @@ testdarray3.o: testdarray3.c amalloc.h
 
 pass.o: pass.c
 	${CC} -O0 -g -c -o $@ $<
+
+pass_prf.o: pass.c
+	${CC} -O0 -g ${PROFLAG} -c -o $@ $<
 
 amalloc2dspeed.o: amalloc2dspeed.c amalloc.h cstopwatch.h
 	${CC} ${CFLAGS} -c -o $@ $< 
@@ -65,5 +71,15 @@ testdarray3_dbg.o: testdarray3.c amalloc.h
 amalloc2dspeed_dbg.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
+amalloc_prf.o: amalloc.c amalloc.h
+	${CC} ${PRFCFLAGS} -c -o $@ $<
+
+
+amalloc2dspeed_prf.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
+	${CC} ${PRFCFLAGS} -c -o $@ $< 
+
+amalloc2dspeed_prf: amalloc2dspeed_prf.o amalloc_prf.o pass_prf.o
+	${CC} ${PRFLDFLAGS} -o $@ $^ ${LDLIBS}
+
 clean:
-	\rm -f testdarray3.o testdarray3_dbg.o testdarray2.o testdarray2_dbg.o testdarray.o testdarray_dbg.o amalloc.o amalloc_dbg.o amalloc2dspeed.o amalloc2dspeed_dbg.o pass.o
+	\rm -f testdarray3.o testdarray3_dbg.o testdarray2.o testdarray2_dbg.o testdarray.o testdarray_dbg.o amalloc.o amalloc_dbg.o amalloc2dspeed.o amalloc2dspeed_dbg.o pass.o amalloc2dspeed_prf.o amalloc_prf.o
