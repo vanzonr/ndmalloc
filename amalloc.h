@@ -17,8 +17,8 @@
  */
 void* amalloc(size_t size, size_t rank, ...);
 void* acalloc(size_t size, size_t rank, ...);
-void* arealloc(void* arr, size_t size, size_t rank, ...);
-void  afree(void* arr);
+void* arealloc(void* ptr, size_t size, size_t rank, ...);
+void  afree(void* ptr);
 /*
  * Description:
  *
@@ -44,20 +44,20 @@ void  afree(void* arr);
  *  allocated multi-dimensional array.
  *
  *  The 'afree' function frees up all the memory allocated for the
- *  multi-dimensional array associates with the pointer 'arr'.
+ *  multi-dimensional array associates with the pointer 'ptr'.
  *
  *  The 'acalloc' function has the same functionality as 'amalloc',
  *  but also initializes the array to all zeros (by calling 'calloc').
  * 
  *  The 'arealloc' function chances the dimensions and/or the size of
- *  the multi-dimenstional array 'arr'.  The content of the array
+ *  the multi-dimenstional array 'ptr'.  The content of the array
  *  will be unchanged in the range from the start of the region up to
  *  the minimum of the old and new sizes.  If the change in dimensions
  *  has changed the shape, the elements get reassigned indices
  *  according to the row-major ordering.  If the re-allocation is
  *  succesful, the new pointer is returned and the old one is invalid.
  *  If the function fails, NULL is returned.  Known bug: the original
- *  'arr' is still deallocated when 'arealloc' fails.
+ *  'ptr' is still deallocated when 'arealloc' fails.
  */
 
 /*
@@ -66,42 +66,43 @@ void  afree(void* arr);
  * about the multi-dimensional structure is associated with each
  * dynamicaly allocated multi-dimensional array.
  */
-size_t asizeof(void* arr, size_t dim);
+size_t asize(void* ptr, size_t dim);
 
 /*
  * Function to get the start of the data (useful for library calls).
  * This works because an internal header containing the information
  * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.  Returns NULL if no
- * darray is associated with arr.
+ * dynamicaly allocated multi-dimensional array.  Returns NULL if ptr
+ * was not allocated with amalloc, acalloc or arealloc.
  */
-void* adata(void* arr);
+void* adata(void* ptr);
 
 /*
  * Function to get the rank of the multi-dimensional array.  This
  * works because an internal header containing the information about
  * the multi-dimensional structure is associated with each dynamicaly
- * allocated multi-dimensional array.  Returns 0 if no darray is
- * associated with arr.
+ * allocated multi-dimensional array.  Returns 0 if 'ptr' was not
+ * allocated with amalloc, acalloc or arealloc.
  */
-size_t arank(void* arr);
+size_t arank(void* ptr);
 
 /*
  * Function to get the shape of the multi-dimensional array This works
  * because an internal header containing the information about the
  * multi-dimensional structure is associated with each dynamicaly
- * allocated multi-dimensional array. Returns NULL if no darray is
- * associated with arr.
+ * allocated multi-dimensional array. Returns NULL if 'ptr' was not
+ * allocated with amalloc, acalloc or arealloc.
  */
-const size_t* ashape(void* arr);
+const size_t* ashape(void* ptr);
 
 /* 
- * Function to check if this is a darray. 
- * This works because an internal header containing the information
- * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.
+ * Function to check 'ptr' is a known dynamicaly allocated array as
+ * returned by amalloc, acalloc, or arealloc.  Returns 1 if 'ptr' was
+ * allocated with amalloc, acalloc or arealloc, and 0 if it was not.
+ * Can be used to see if adata, arank, asize, and ashape will give
+ * useful information about the array.
  */
-int aknown(void* arr);
+int aknown(void* ptr);
 
 #endif
 

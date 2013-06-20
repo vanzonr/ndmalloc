@@ -8,19 +8,17 @@
  */
 
 #include "amalloc.h"
-#include "damalloc.h"
 #include <stdlib.h>
 #include <stdarg.h>
-#include <string.h>
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
 /* 
- * Define a partial darray struct, just enough to be able to convert
- * say a double** to a darray.  This header will be placed before the
- * addresses holdinng the data and array pointers in the darray
- * struct. A special magic_mark is added to the rank field,
- * as a check that we do indeed have a darray struct. 
+ * Define a header struct, with all the information about the
+ * dynamically allocated array, except the pointer-to-pointer.  This
+ * header will be placed before the addresses holdinng the data and
+ * array pointers. A special magic_mark is added to the rank field, as
+ * a check that we do indeed have a dynamically allocated array.
  */
 typedef struct {
     void*   data;    /* as in darray */
@@ -48,7 +46,6 @@ typedef struct {
 #define header_ptr_size  (header_size/sizeof(char*))
 
 
-
 /*
  * INTERNAL ROUTINES
  *
@@ -61,19 +58,9 @@ typedef struct {
  * Internal function to get the hidden header given the pointer-to-pointer array
  */
 static 
-header_t* da__get_header( void* array )
+header_t* da__get_header_address( void* array )
 {
     return (header_t*)((char*)array - header_size);
-}
-
-/*
- * Internal function to mark a given header with the correct magic stamp 
- */
-static 
-void da__mark_header( header_t* hdr )
-{
-    hdr->rank &= magic_unmask;
-    hdr->rank |= magic_mark;
 }
 
 /*
@@ -89,19 +76,17 @@ int da__is_header( header_t* hdr )
  * Internal function to create darray struct and prepend it with a header 
  */
 static 
-darray da__create( void*    array,
-                   void*    data,
-                   size_t   size,
-                   size_t   rank,
-                   size_t*  shape )
+void da__create( void*    array,
+                 void*    data,
+                 size_t   size,
+                 size_t   rank,
+                 size_t*  shape )
 {  
-    header_t* hdr = da__get_header(array);
+    header_t* hdr = da__get_header_address(array);
     hdr->data  = data;
     hdr->size  = size;
-    hdr->rank  = rank;
+    hdr->rank  = (rank & magic_unmask) | magic_mark;
     hdr->shape = shape;
-    da__mark_header(hdr);
-    return (darray){array, data, size, rank, shape};
 }
 
 /*
@@ -154,9 +139,9 @@ void* da__pointer_structure( void*    data,
  * Internal function routine to allocate the memory with indices from a va_list
  */
 static 
-darray da__vdmalloc( size_t   size, 
-                     size_t   rank, 
-                     va_list  arglist )
+void* da__vamalloc( size_t   size, 
+                    size_t   rank, 
+                    va_list  arglist )
 {
     void*    array;
     void*    data;
@@ -165,7 +150,7 @@ darray da__vdmalloc( size_t   size,
 
     shape = malloc(sizeof(size_t)*rank);
     if (shape == NULL) 
-        return DNULL;
+        return NULL;
     
     for (i = 0; i < rank; i++) 
         shape[i] = va_arg(arglist, size_t);
@@ -177,7 +162,7 @@ darray da__vdmalloc( size_t   size,
     data = malloc(total_elements*size + header_size);
     if (data == NULL) {
         free(shape);
-        return DNULL;
+        return NULL;
     }
     data = (char*)data + header_size;
     
@@ -185,18 +170,20 @@ darray da__vdmalloc( size_t   size,
     if (array == NULL) {
         free(shape);
         free((char*)data - header_size);
-        return DNULL;
-    } else 
-        return da__create(array, data, size, rank, shape);
+        return NULL;
+    } else {
+        da__create(array, data, size, rank, shape);
+        return array;
+    }
 }
 
 /*
  * Internal function to allocate and clear memory with dimensions from a va_list
  */
 static 
-darray da__vdcalloc( size_t   size, 
-                     size_t   rank, 
-                     va_list  arglist)
+void* da__vacalloc( size_t   size, 
+                    size_t   rank, 
+                    va_list  arglist )
 {
     void*    array;
     void*    data;
@@ -205,7 +192,7 @@ darray da__vdcalloc( size_t   size,
     
     shape = malloc(sizeof(size_t)*rank);
     if (shape == NULL) 
-        return DNULL;
+        return NULL;
     
     for (i = 0; i < rank; i++) 
         shape[i] = va_arg(arglist, size_t);
@@ -219,7 +206,7 @@ darray da__vdcalloc( size_t   size,
     data = calloc(chunks, mem_align_bytes);
     if (data == NULL) {
         free(shape);
-        return DNULL;
+        return NULL;
     }
     data = (char*)data + header_size;
 
@@ -227,31 +214,40 @@ darray da__vdcalloc( size_t   size,
     if (array == NULL) {
         free(shape);
         free((char*)data - header_size);
-        return DNULL;
-    } else
-        return da__create(array, data, size, rank, shape);
+        return NULL;
+    } else {
+        da__create(array, data, size, rank, shape);
+        return array;
+    }
 }
 
 /*
  * Internal function to reallocate (or reshape!) with dimensions from a va_list
  */
 static 
-darray da__vdrealloc( darray   darr, 
-                      size_t   size, 
-                      size_t   rank, 
-                      va_list  arglist )
+void* da__varealloc( void*    ptr, 
+                     size_t   size, 
+                     size_t   rank, 
+                     va_list  arglist )
 {
-    void*    array;
-    void*    data;
-    size_t*  shape;
-    size_t   i, total_elements;
+    void*      array;
+    void*      data;
+    size_t*    shape;
+    size_t     i, total_elements, oldrank;
+    header_t*  hdr;
+    
+    hdr = da__get_header_address(ptr);
+    data = hdr->data;
+    shape = hdr->shape;
+    oldrank = hdr->rank;
 
-    free(darr.shape);
-    free((char*)darr.array - header_size);
+    free(shape);
+    if (oldrank > 1) 
+        free(ptr - header_size);
 
     shape = malloc(sizeof(size_t)*rank);
     if (shape == NULL) 
-        return DNULL;
+        return NULL;
     
     for (i = 0; i < rank; i++) 
       shape[i] = va_arg(arglist, size_t);
@@ -260,11 +256,11 @@ darray da__vdrealloc( darray   darr,
     for (i = 0; i < rank; i++) 
         total_elements *= shape[i];
 
-    data = realloc((char*)darr.data - header_size, 
+    data = realloc((char*)data - header_size, 
                    total_elements*size + header_size);
     if (data == NULL) {
         free(shape);
-        return DNULL;
+        return NULL;
     }
     data = (char*)data + header_size;
 
@@ -272,225 +268,19 @@ darray da__vdrealloc( darray   darr,
     if (array == NULL) {
         free(shape);
         free((char*)data - header_size);
-        return DNULL;
+        return NULL;
     } 
-    else
-        return da__create(array, data, size, rank, shape);
-}
-
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
-
-
-/*
- * IMPLEMENTATION OF THE API
- */
-
-/*
- *  The 'damalloc' function creates a dynamically allocated multi-
- *  dimensional array of dimensions n[0] x n[1] ... x n[rank-1].  The
- *  dimensions are to be given as the variable-length arguments.  The
- *  function allocates 'size'*n[0]*n[1]*..n['rank'-1] bytes for the
- *  data, plus another n[0]*n[1]*...n[rank-2]*sizeof(void*) bytes for
- *  the pointer-to-pointer structure that is common for c-style
- *  arrays.  It also allocates internal buffers of currently at most
- *  2**sizeof('darray').  The pointer-to-pointer structure assumes
- *  that all pointers are the same size and that the elements of the
- *  array are of size 'size'.  It returns a 'darray', which is a
- *  structure that contains the information about the multi-
- *  dimensional structure.  This structure can be used in calls to
- *  'darealloc', 'dafree', 'dasizeof', 'danotnull', 'dadata',
- *  'darank', 'dashape', 'daget', 'daset', and 'datoa'.  If the
- *  memory allocation fails, a special darray structure called DNULL
- *  is returned.
- */
-darray damalloc( size_t size, 
-                size_t rank, 
-                ... )
-{
-    darray result;
-    va_list arglist;
-    va_start(arglist, rank);
-    #ifdef __TINYC__
-    // tcc stdarg is off by one element in struct returning functions
-    va_arg(arglist, size_t);
-    #endif
-    result = da__vdmalloc(size, rank, arglist);
-    va_end(arglist);
-    return result;
-}
-
-/* 
- *  The 'dacalloc' function has the same functionality as damalloc, but
- *  also initializes the array content to zero (it does so by calling
- *  'calloc').
- */ 
-darray dacalloc(size_t size, size_t rank, ...)
-{
-    darray result;
-    va_list arglist;
-    va_start(arglist, rank);
-    #ifdef __TINYC__
-    // tcc stdarg is off by one element in struct returning functions
-    va_arg(arglist, size_t);
-    #endif
-    result = da__vdcalloc(size, rank, arglist);
-    va_end(arglist);
-    return result;
-}
-
-/*
- *  The 'darealloc' function chances the dimensions and/or the size of
- *  the multi-dimenstional array 'darr'.  The content of the array
- *  will be unchanged in the range from the start of the region up to
- *  the minimum of the old and new sizes.  If the change in dimensions
- *  has changed the shape, the elements get reassigned indices
- *  according to the row-major ordering.  If the re-allocation is
- *  succesful, the new darray is returned and the 'darr' is no longer
- *  valid.  If the function fails, DNULL is returned.  Known bug: the
- *  original 'darr' is still invalidated when 'darealloc' fails.
- */
-darray darealloc(darray darr, size_t size, size_t rank, ...)
-{
-    darray result;
-    va_list arglist;
-    va_start(arglist, rank);
-    #ifdef __TINYC__
-    // tcc stdarg is off by one element in struct returning functions
-    va_arg(arglist, size_t);
-    #endif
-    result = da__vdrealloc(darr, size, rank, arglist);
-    va_end(arglist);
-    return result;
-}
-
-/* 
- *  The 'dafree' function frees up all the memory allocated for the
- *  multi-dimensional structure 'darr'. The 'darr' structure is
- *  invalid after the call.
- */
-void dafree(darray darr)
-{  
-    free(darr.shape);
-    free((char*)darr.data - header_size);
-    if (darr.rank > 1) 
-      free((char*)darr.array - header_size);
-}
-
-/* 
- * Function to get the extent in any given dimension. 
- */
-size_t dasizeof(darray darr, size_t dim)
-{
-    return (dim < darr.rank) ? darr.shape[dim] : 0;
-}
-
-/*
- * Function to check whether darr == DNULL 
- */
-int danotnull(darray darr)
-{
-    return darr.array != NULL || darr.data != NULL || darr.shape != NULL
-        || darr.rank != 0 || darr.size != 0;
-}
-
-/*
- * Function to get the start of the data (useful for library calls).
- */
-void* dadata(darray darr)
-{
-    return darr.data;
-}
-
-/*
- * Function to get the rank of the multi-dimensional array.
- */
-size_t darank(darray darr)
-{
-    return darr.rank;
-}
-
-/*
- * Function to get the shape of the multi-dimensional array
- */
-const size_t* dashape(darray darr)
-{
-    return darr.shape;
-}
-
-/*
- * Accessor/modifier functions (... is a list of integer indices).
- * Included for completion, converting to a TYPE** will be much
- * faster.xx 
- */
-void daget(void* x, darray a, ...)
-{
-    size_t   i, n;
-    va_list  arglist;
-    char**   start;
-    void*    y;
-    
-    start = a.array;
-    va_start(arglist, a);
-    for (i = 0; i < a.rank-1; i++) {
-        n = va_arg(arglist, size_t);
-        start = (char**)(start[n]);
+    else {
+        da__create(array, data, size, rank, shape);
+        return array;
     }
-    n = va_arg(arglist, size_t);
-    va_end(arglist);
-    
-    y = (void*)((char*)start + n*a.size);
-    
-    memcpy(x, y, a.size);  
 }
 
-void daset(void* x, darray a, ...)
-{
-    size_t   i, n;
-    va_list  arglist;
-    char**   start;
-    void*    y;
-    
-    start = a.array;
-    va_start(arglist, a);
-    for (i = 0; i < a.rank-1; i++) {
-        n = va_arg(arglist, size_t);
-        start = (char**)(start[n]);
-    }
-    n = va_arg(arglist, size_t);
-    va_end(arglist);
-    
-    y = (void*)((char*)start + n*a.size);
-    
-    memcpy(y, x, a.size); 
-}
 
-/* 
- *  Convert to TYPE** or similar 
+/*
+ * IMPLEMENTATION OF THE INTERFACE
  */
-void* datoa(darray darr)
-{
-    return darr.array;
-}
 
-/* 
- *  Convert back from type** to a darray 
- */
-darray atoda(void* arr)
-{
-    header_t* hdr = da__get_header(arr);
-    if (da__is_header(hdr)) {
-        return (darray) {
-            arr, 
-            hdr->data, 
-            hdr->size, 
-            hdr->rank & magic_unmask, 
-            hdr->shape
-        };
-    } 
-    else 
-        return DNULL;
-}
 
 /*
  *  The 'amalloc' function creates a dynamically allocated multi-
@@ -500,31 +290,27 @@ darray atoda(void* arr)
  *  'size'*n[0]*n[1]*..n['rank'-1] bytes for the data, plus another
  *  n[0]*n[1]*...n[rank-2]*sizeof(void*) bytes for the
  *  pointer-to-pointer structure that is common for c-style arrays.
- *  It also allocates internal buffers of currently at most
- *  2**sizeof('darray').  The pointer-to-pointer structure assumes
- *  that all pointers are the same size.  The return value can be cast
- *  to a TYPE* for an array of rank 1, TYPE** for rank 2, T*** for
- *  rank 3, etc.  .This casted pointer can then be used in the same
- *  way a c-style array is used, i.e., with repeated square bracket
- *  indexing.  If the memory allocation fails, a NULL pointer is
- *  returned.  The return value (or its casted version) can be used in
- *  calls to 'arealloc', 'afree', 'asizeof', 'adata', 'arank',
- *  'ashape', 'aknown', and 'atoda'.  This works because an internal
- *  header containing the information about the multi-dimensional
- *  structure is associated with each dynamicaly allocated
- *  multi-dimensional array.
+ *  It also allocates internal buffers of moderate size (~64 bytes).
+ *  The pointer-to-pointer structure assumes that all pointers are the
+ *  same size.  The return value can be cast to a TYPE* for an array
+ *  of rank 1, TYPE** for rank 2, T*** for rank 3, etc.  .This casted
+ *  pointer can then be used in the same way a c-style array is used,
+ *  i.e., with repeated square bracket indexing.  If the memory
+ *  allocation fails, a NULL pointer is returned.  The return value
+ *  (or its casted version) can be used in calls to 'arealloc',
+ *  'afree', 'asize', 'adata', 'arank', 'ashape', 'aknown', and
+ *  'atoda'.  This works because an internal header containing the
+ *  information about the multi-dimensional structure is associated
+ *  with each dynamicaly allocated multi-dimensional array.
  */
 void* amalloc(size_t size, size_t rank, ...)
 {
-    darray result;
+    void* result;
     va_list arglist;
     va_start(arglist, rank);
-    result = da__vdmalloc(size, rank, arglist);
+    result = da__vamalloc(size, rank, arglist);
     va_end(arglist);
-    if ( danotnull(result) )
-        return result.array;
-    else
-        return NULL;
+    return result;
 }
 
 /*
@@ -533,50 +319,48 @@ void* amalloc(size_t size, size_t rank, ...)
  */
 void* acalloc(size_t size, size_t rank, ...)
 {
-    darray result;
+    void* result;
     va_list arglist;
     va_start(arglist, rank);
-    result = da__vdcalloc(size, rank, arglist);
+    result = da__vacalloc(size, rank, arglist);
     va_end(arglist);
-    if ( danotnull(result) )
-        return result.array;
-    else
-        return NULL;
+    return result;
 }
 
 /*
  *  The 'arealloc' function chances the dimensions and/or the size of
- *  the multi-dimenstional array 'arr'.  The content of the array
+ *  the multi-dimenstional array 'ptr'.  The content of the array
  *  will be unchanged in the range from the start of the region up to
  *  the minimum of the old and new sizes.  If the change in dimensions
  *  has changed the shape, the elements get reassigned indices
  *  according to the row-major ordering.  If the re-allocation is
  *  succesful, the new pointer is returned and the old one is invalid.
  *  If the function fails, NULL is returned.  Known bug: the original
- *  'arr' is still deallocated when 'arealloc' fails.
+ *  'ptr' is still deallocated when 'arealloc' fails.
  */
-void* arealloc(void* arr, size_t size, size_t rank, ...)
+void* arealloc(void* ptr, size_t size, size_t rank, ...)
 {
-    darray result;
+    void* result;
     va_list arglist;
     va_start(arglist, rank);
-    result = da__vdrealloc(atoda(arr), size, rank, arglist);
+    result = da__varealloc(ptr, size, rank, arglist);
     va_end(arglist);
-    if ( danotnull(result) )
-        return result.array;
-    else
-        return NULL;
+    return result;
 }
 
 /*
  *  The 'afree' function frees up all the memory allocated for the
- *  multi-dimensional array associates with the pointer 'arr'.
+ *  multi-dimensional array associates with the pointer 'ptr'.
  */
-void afree(void* arr)
+void afree(void* ptr)
 {
-  darray darr = atoda(arr);
-  if ( danotnull(darr) )
-    dafree(darr);
+    header_t* hdr = da__get_header_address(ptr);
+    if (da__is_header(hdr)) {
+        free(hdr->shape);
+        free((char*)hdr->data - header_size);
+        if (hdr->rank > 1) 
+            free(ptr - header_size);
+    }
 }
 
 /*
@@ -585,12 +369,15 @@ void afree(void* arr)
  * about the multi-dimensional structure is associated with each
  * dynamicaly allocated multi-dimensional array.
  */
-size_t asizeof(void* arr, size_t dim)
+size_t asize(void* ptr, size_t dim)
 {
-    darray darr = atoda(arr);
-    if ( danotnull(darr) )
-        return dasizeof(darr, dim);
-    else
+    header_t* hdr = da__get_header_address(ptr);
+    if (da__is_header(hdr)) {
+        if (dim < hdr->rank)
+            return hdr->shape[dim];
+        else
+            return 1;
+    } else
         return 0;
 }
 
@@ -599,15 +386,15 @@ size_t asizeof(void* arr, size_t dim)
  * This works because an internal header containing the information
  * about the multi-dimensional structure is associated with each
  * dynamicaly allocated multi-dimensional array.  Returns NULL if no
- * darray is associated with arr.
+ * darray is associated with 'ptr'.
  */
-void* adata(void* arr)
+void* adata(void* ptr)
 {
-    header_t* hdr = da__get_header(arr);
+    header_t* hdr = da__get_header_address(ptr);
     if (da__is_header(hdr))
         return hdr->data;
     else
-        return 0;
+        return NULL;
 }
 
 /*
@@ -617,9 +404,9 @@ void* adata(void* arr)
  * dynamicaly allocated multi-dimensional array.  Returns 0 if no
  * darray is associated with arr.
  */
-size_t arank(void* arr)
+size_t arank(void* ptr)
 {
-    header_t* hdr = da__get_header(arr);
+    header_t* hdr = da__get_header_address(ptr);
     if (da__is_header(hdr))
         return hdr->rank & magic_unmask;
     else
@@ -627,15 +414,15 @@ size_t arank(void* arr)
 }
 
 /*
- * Function to get the shape of the multi-dimensional array This works
- * because an internal header containing the information about the
- * multi-dimensional structure is associated with each dynamicaly
- * allocated multi-dimensional array. Returns NULL if no darray is
- * associated with arr.
+ * Function to get the shape of the multi-dimensional array.  This
+ * works because an internal header containing the information about
+ * the multi-dimensional structure is associated with each dynamicaly
+ * allocated multi-dimensional array. Returns NULL if no dynamic array
+ * is associated with 'ptr'.
  */
-const size_t* ashape(void* arr)
+const size_t* ashape(void* ptr)
 {
-    header_t* hdr = da__get_header(arr);
+    header_t* hdr = da__get_header_address(ptr);
     if (da__is_header(hdr))
         return hdr->shape;
     else
@@ -643,15 +430,15 @@ const size_t* ashape(void* arr)
 }
 
 /* 
- * Function to check if this is a darray. 
- * This works because an internal header containing the information
- * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.
+ * Function to check if 'ptr's is an array allocated with amalloc,
+ * acalloc, or arealloc.  This works because an internal header
+ * containing the information about the multi-dimensional structure is
+ * associated with each dynamicaly allocated multi-dimensional array.
  */
-int aknown(void* arr)
+int aknown(void* ptr)
 {
-    header_t* hdr = da__get_header(arr);
+    header_t* hdr = da__get_header_address(ptr);
     return da__is_header(hdr);
 }
 
-/* end of file darray.c */
+/* end of file amalloc.c */
