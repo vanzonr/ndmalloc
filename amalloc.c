@@ -21,10 +21,10 @@
  * a check that we do indeed have a dynamically allocated array.
  */
 typedef struct {
-    void*   data;    /* as in darray */
-    size_t  size;    /* as in darray */
-    size_t  rank;    /* as in darray, but with magic_mark added */
-    size_t* shape;   /* as in darray */
+    void*   data;         /* Pointer to the contiguous elements     */
+    size_t  size;         /* How big is each element?               */
+    size_t  rank;         /* #dimensions, but with magic_mark added */
+    size_t* shape;        /* What are those dimensions?             */
 } header_t;
 
 /* 
@@ -73,7 +73,7 @@ int da__is_header( header_t* hdr )
 }
 
 /*
- * Internal function to create darray struct and prepend it with a header 
+ * Internal function to prepend the dynamic pointer with a header 
  */
 static 
 void da__create( void*    array,
@@ -385,8 +385,8 @@ size_t asize(void* ptr, size_t dim)
  * Function to get the start of the data (useful for library calls).
  * This works because an internal header containing the information
  * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.  Returns NULL if no
- * darray is associated with 'ptr'.
+ * dynamicaly allocated multi-dimensional array.  Returns NULL if
+ * 'ptr' was not allocated with amalloc, acalloc, or arealloc.
  */
 void* adata(void* ptr)
 {
@@ -401,8 +401,8 @@ void* adata(void* ptr)
  * Function to get the rank of the multi-dimensional array.
  * This works because an internal header containing the information
  * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.  Returns 0 if no
- * darray is associated with arr.
+ * dynamicaly allocated multi-dimensional array.  Returns 0 if
+ * 'ptr' was not allocated with amalloc, acalloc, or arealloc.
  */
 size_t arank(void* ptr)
 {
