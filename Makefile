@@ -1,8 +1,8 @@
 # Makefile for amalloc test programs
 #CC=tcc
 LDLIBS=-lm
-LDFLAGS=
-CFLAGS=-Wall -O3 -DNDEBUG
+LDFLAGS=-g
+CFLAGS=-Wall -g -O3 -DNDEBUG
 DBGLDFLAGS=-g
 DBGCFLAGS= -Wall -O0 -DDEBUG -g
 #PROFLAG=-pg
