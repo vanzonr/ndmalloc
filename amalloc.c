@@ -39,7 +39,7 @@ typedef struct {
  * Define an alignment policy, such that the headers and the actual
  * data are a multiple of mem_align_bytes apart.
  */
-#define mem_align_x      4
+#define mem_align_x      1
 #define mem_align_bytes  (mem_align_x*sizeof(char*))
 #define header_size      (((sizeof(header_t)+mem_align_bytes-1) \
                           /mem_align_bytes)*mem_align_bytes)

@@ -20,10 +20,13 @@ testdarray2: testdarray2.o amalloc.o
 testdarray3: testdarray3.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
-amalloc2dspeed: amalloc2dspeed.o amalloc.o pass.o
+amalloc2dspeed: amalloc2dspeed.o amalloc.o pass.o test_damalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc.o: amalloc.c amalloc.h
+	${CC} ${CFLAGS} -c -o $@ $<
+
+test_damalloc.o: test_damalloc.c test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $<
 
 testdarray.o: testdarray.c amalloc.h
@@ -41,7 +44,7 @@ pass.o: pass.c
 pass_prf.o: pass.c
 	${CC} -O0 -g ${PROFLAG} -c -o $@ $<
 
-amalloc2dspeed.o: amalloc2dspeed.c amalloc.h cstopwatch.h
+amalloc2dspeed.o: amalloc2dspeed.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
 testdarray_dbg: testdarray_dbg.o amalloc_dbg.o
@@ -53,10 +56,13 @@ testdarray2_dbg: testdarray2_dbg.o amalloc_dbg.o
 testdarray3_dbg: testdarray3_dbg.o amalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
-amalloc2dspeed_dbg: amalloc2dspeed_dbg.o amalloc.o pass.o
+amalloc2dspeed_dbg: amalloc2dspeed_dbg.o amalloc.o pass.o test_damalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc_dbg.o: amalloc.c amalloc.h
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
+test_damalloc_dbg.o: test_damalloc.c test_damalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
 testdarray_dbg.o: testdarray.c amalloc.h
@@ -74,11 +80,13 @@ amalloc2dspeed_dbg.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
 amalloc_prf.o: amalloc.c amalloc.h
 	${CC} ${PRFCFLAGS} -c -o $@ $<
 
+test_damalloc_prf.o: test_damalloc.c test_damalloc.h
+	${CC} ${PRFCFLAGS} -c -o $@ $<
 
 amalloc2dspeed_prf.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
 	${CC} ${PRFCFLAGS} -c -o $@ $< 
 
-amalloc2dspeed_prf: amalloc2dspeed_prf.o amalloc_prf.o pass_prf.o
+amalloc2dspeed_prf: amalloc2dspeed_prf.o amalloc_prf.o pass_prf.o test_damalloc_prf.o
 	${CC} ${PRFLDFLAGS} -o $@ $^ ${LDLIBS}
 
 clean:
