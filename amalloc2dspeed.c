@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-  const int repeat = 2;
+  const int repeat = 10;
 /*const int n = 13376; */ /* requires ~2GB of storage*/
 /*const int n = 9458;  */ /* requires ~1GB of storage */
 const int n = 8458;

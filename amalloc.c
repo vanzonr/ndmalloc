@@ -243,7 +243,7 @@ void* da__varealloc( void*    ptr,
 
     free(shape);
     if (oldrank > 1) 
-        free(ptr - header_size);
+       free((char*)ptr - header_size);
 
     shape = malloc(sizeof(size_t)*rank);
     if (shape == NULL) 
@@ -359,7 +359,7 @@ void afree(void* ptr)
         free(hdr->shape);
         free((char*)hdr->data - header_size);
         if (hdr->rank > 1) 
-            free(ptr - header_size);
+           free((char*)ptr - header_size);
     }
 }
 
