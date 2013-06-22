@@ -5,6 +5,7 @@
 
 #include "cstopwatch.h"
 #include "amalloc.h"
+#include "test_damalloc.h"
 #include <stdlib.h>
 #include <math.h>
 
@@ -201,14 +202,17 @@ double case_dyn(int repeat)
 {
     int i, j;
     double d = 0.0;
-    float** a = malloc(sizeof(float*)*n);
-    float** b = malloc(sizeof(float*)*n);
-    float** c = malloc(sizeof(float*)*n);
-    for (i=0;i<n;i++) {
-        a[i] = malloc(sizeof(float)*n);
-        b[i] = malloc(sizeof(float)*n);
-        c[i] = malloc(sizeof(float)*n);
-    }
+    /* float** a = malloc(sizeof(float*)*n); */
+    /* float** b = malloc(sizeof(float*)*n); */
+    /* float** c = malloc(sizeof(float*)*n); */
+    /* for (i=0;i<n;i++) { */
+    /*     a[i] = malloc(sizeof(float)*n); */
+    /*     b[i] = malloc(sizeof(float)*n); */
+    /*     c[i] = malloc(sizeof(float)*n); */
+    /* } */
+    float** a = test_damalloc2d(sizeof(float), n, n);
+    float** b = test_damalloc2d(sizeof(float), n, n);
+    float** c = test_damalloc2d(sizeof(float), n, n);
     while (repeat--) {
         for (i=0;i<n;i++)
           //            #pragma parallel
@@ -228,14 +232,17 @@ double case_dyn(int repeat)
                 d += c[i][j];
         pass(c[0],(float*)&d,&repeat);
     }
-    for (i=0;i<n;i++) {
-        free(a[i]);
-        free(b[i]);
-        free(c[i]);
-    }
-    free(a);
-    free(b);
-    free(c);
+    /* for (i=0;i<n;i++) { */
+    /*     free(a[i]); */
+    /*     free(b[i]); */
+    /*     free(c[i]); */
+    /* } */
+    /* free(a); */
+    /* free(b); */
+    /* free(c); */
+    test_dafree2d(a,n);
+    test_dafree2d(b,n);
+    test_dafree2d(c,n);
     return d;
 }
 

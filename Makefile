@@ -2,7 +2,7 @@
 #CC=tcc
 LDLIBS=-lm
 LDFLAGS=-g
-CFLAGS=-Wall -g -O3 -DNDEBUG
+CFLAGS=-Wall -g -O3 -DNDEBUG -fast
 DBGLDFLAGS=-g
 DBGCFLAGS= -Wall -O0 -DDEBUG -g
 #PROFLAG=-pg
@@ -90,4 +90,4 @@ amalloc2dspeed_prf: amalloc2dspeed_prf.o amalloc_prf.o pass_prf.o test_damalloc_
 	${CC} ${PRFLDFLAGS} -o $@ $^ ${LDLIBS}
 
 clean:
-	\rm -f testdarray3.o testdarray3_dbg.o testdarray2.o testdarray2_dbg.o testdarray.o testdarray_dbg.o amalloc.o amalloc_dbg.o amalloc2dspeed.o amalloc2dspeed_dbg.o pass.o amalloc2dspeed_prf.o amalloc_prf.o
+	\rm -f testdarray3.o testdarray3_dbg.o testdarray2.o testdarray2_dbg.o testdarray.o testdarray_dbg.o amalloc.o amalloc_dbg.o amalloc2dspeed.o amalloc2dspeed_dbg.o pass.o amalloc2dspeed_prf.o amalloc_prf.o pass_prf.o test_damalloc.o test_damalloc_dbg.o
