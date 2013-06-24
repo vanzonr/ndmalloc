@@ -1,8 +1,10 @@
 # Makefile for amalloc test programs
-#CC=tcc
+CC=icc
 LDLIBS=-lm
-LDFLAGS=-g
-CFLAGS=-Wall -g -O3 -DNDEBUG -fast
+LDFLAGS=-g -O3 -fast
+#-march=native  
+CFLAGS=-Wall -g -O3 -fast -march=native -DNDEBUG -std=c99
+#-fast
 DBGLDFLAGS=-g
 DBGCFLAGS= -Wall -O0 -DDEBUG -g
 #PROFLAG=-pg
@@ -20,7 +22,12 @@ testdarray2: testdarray2.o amalloc.o
 testdarray3: testdarray3.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
-amalloc2dspeed: amalloc2dspeed.o amalloc.o pass.o test_damalloc.o
+amalloc2dspeed: amalloc2dspeed.o \
+                amalloc2dspeed-auto.o \
+                amalloc2dspeed-exact.o \
+                amalloc2dspeed-dynamic.o \
+                amalloc2dspeed-amalloc.o \
+                amalloc.o pass.o test_damalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc.o: amalloc.c amalloc.h
@@ -47,6 +54,18 @@ pass_prf.o: pass.c
 amalloc2dspeed.o: amalloc2dspeed.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
+amalloc2dspeed-dynamic.o: amalloc2dspeed-dynamic.c amalloc.h cstopwatch.h test_damalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
+amalloc2dspeed-auto.o: amalloc2dspeed-auto.c amalloc.h cstopwatch.h test_damalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
+amalloc2dspeed-amalloc.o: amalloc2dspeed-amalloc.c amalloc.h cstopwatch.h test_damalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
+amalloc2dspeed-exact.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_damalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
 testdarray_dbg: testdarray_dbg.o amalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
@@ -56,7 +75,12 @@ testdarray2_dbg: testdarray2_dbg.o amalloc_dbg.o
 testdarray3_dbg: testdarray3_dbg.o amalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
-amalloc2dspeed_dbg: amalloc2dspeed_dbg.o amalloc.o pass.o test_damalloc_dbg.o
+amalloc2dspeed_dbg: amalloc2dspeed_dbg.o \
+                amalloc2dspeed-auto_dbg.o \
+                amalloc2dspeed-exact_dbg.o \
+                amalloc2dspeed-dynamic_dbg.o \
+                amalloc2dspeed-amalloc_dbg.o \
+                amalloc_dbg.o pass.o test_damalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc_dbg.o: amalloc.c amalloc.h
@@ -86,8 +110,13 @@ test_damalloc_prf.o: test_damalloc.c test_damalloc.h
 amalloc2dspeed_prf.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
 	${CC} ${PRFCFLAGS} -c -o $@ $< 
 
-amalloc2dspeed_prf: amalloc2dspeed_prf.o amalloc_prf.o pass_prf.o test_damalloc_prf.o
+amalloc2dspeed_prf: amalloc2dspeed_prf.o \
+                    amalloc2dspeed-auto_prf.o \
+                    amalloc2dspeed-exact_prf.o \
+                    amalloc2dspeed-dynamic_prf.o \
+                    amalloc2dspeed-amalloc_prf.o \
+                    amalloc_prf.o pass_prf.o test_damalloc_prf.o
 	${CC} ${PRFLDFLAGS} -o $@ $^ ${LDLIBS}
 
 clean:
-	\rm -f testdarray3.o testdarray3_dbg.o testdarray2.o testdarray2_dbg.o testdarray.o testdarray_dbg.o amalloc.o amalloc_dbg.o amalloc2dspeed.o amalloc2dspeed_dbg.o pass.o amalloc2dspeed_prf.o amalloc_prf.o pass_prf.o test_damalloc.o test_damalloc_dbg.o
+	\rm -f amalloc2dspeed-amalloc.o amalloc_dbg.o testdarray3_dbg.o amalloc2dspeed-auto.o amalloc.o testdarray3.o amalloc2dspeed_dbg.o pass.o testdarray_dbg.o amalloc2dspeed-dynamic.o test_damalloc.o testdarray.o amalloc2dspeed-exact.o testdarray2_dbg.o amalloc2dspeed.o testdarray2.o
