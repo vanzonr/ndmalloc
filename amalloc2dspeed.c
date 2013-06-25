@@ -9,10 +9,10 @@
 #include "pass.h"
 #include "ndef.h"
 
-double case_exact(int repeat);
-double case_amalloc(int repeat);
-double case_dyn(int repeat);
-double case_auto(int repeat);
+#include "amalloc2dspeed-exact.h"
+#include "amalloc2dspeed-amalloc.h"
+#include "amalloc2dspeed-dynamic.h"
+#include "amalloc2dspeed-auto.h"
 
 int main(int argc, char**argv) 
 {

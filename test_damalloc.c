@@ -9,7 +9,7 @@
 #include "test_damalloc.h"
 #include <stdlib.h>
 void* test_damalloc2d(size_t size, size_t n0, size_t n1){
-    char*restrict* ptr = calloc(n0,sizeof(char*));
+    char** ptr = calloc(n0,sizeof(char*));
     int i;
     ptr[0] = malloc(size*n1*n0);
     for (i=0;i<n0;i++)
