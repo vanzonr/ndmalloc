@@ -14,15 +14,15 @@ cat $depfile | sed -e 's/\\$/@@@/' -e 's/$/###/' | tr '\n' ' ' | sed -e 's/@@@##
 # This script will assume that if a file X.c depends on Y.h, there could be
 # be a file called Y.c with the implementation.  When linking X.o one
 # will therefore need Y.o as well.  The list of all Y.o will be in
-# ${downobj[X.o]} (i.e., downobj is an associative bash array).
-declare -A downobj
-declare -A upobj
+# ${impliedobj[X.o]} (i.e., impliedobj is an associative bash array).
+declare -A impliedobj
 
 # read the lines of the $depfile
 while read line; do
     # split the line into the objfile and the dependencies
     objfile=$(echo $line|awk -F: '{print $1}')
     addfile=$(echo $line|awk -F: '{print $2}')
+    implied=""
     for f in $addfile; do
         # check that we're not creating a self-dependency
         if [[ "${f%.c}.o" != "$objfile" ]]; then
@@ -31,12 +31,13 @@ while read line; do
             # check that Y.c exists
             if [[ -f $addobjfile ]]; then 
                 addobjfile=${f%.h}.o
-                downobj[$objfile]="${downobj[$objfile]} $addobjfile"
-                upobj[$addobjfile]="${upobj[$addobjfile]} $objfile"
+                implied="${implied} $addobjfile"
             fi
         fi
         fi
     done
+    # fill the associative array
+    impliedobj[$objfile]=$implied
 done < $depfileoneline
 
 # detect main programs
@@ -67,7 +68,7 @@ if ! [[ "$mainfiles" == "" ]]; then
     echo
     echo "# source file dependencies"
     echo
-    cat $depfileoneline
+    cat $depfile
     echo
     echo "# linking commands for each executable"
     echo 
@@ -77,8 +78,7 @@ if ! [[ "$mainfiles" == "" ]]; then
         # this will need the current files object file in the least
         newobjects="${mainfile%.c}.o"
         objects=""
-        # iteratively build object file list by adding "implied"
-        # objects down the dependency graph
+        # iteratively build object file list by adding "implied" objects
         while [[ "$newobjects" != "$objects" ]]; do
             # copy new to old
             objects=$newobjects
@@ -86,7 +86,7 @@ if ! [[ "$mainfiles" == "" ]]; then
             newobjects=""
             for o in $objects; do
                 # add all implied objects in the old to the new one
-                newobjects="$newobjects $o ${downobj[$o]}"
+                newobjects="$newobjects $o ${impliedobj[$o]}"
             done
             # normalize the list by sorting and keeping unique objects only
             newobjects=$(echo $newobjects|tr ' ' '\n'|sort|uniq|tr '\n' ' ')

@@ -1,0 +1,247 @@
+#include "shape.h"
+#include "shapeauto.h"
+
+// Six different signatures of a print function for a 4d tensor: 
+
+// print_1 takes a quadruple-pointer tensor, whose elements and row
+// pointers could be changed. Dangerous.
+// - Not const-correct, but common in non-const (often C) libraries.  
+// - Will require a call to no_const
+void print_1(float****a, int n1, int n2, int n3, int n4);
+
+// print_2 takes a tensor whose elements are constant, but whose row
+// pointers could in principle be changed. Dangerous, but common!
+// - Not const-correct.
+// - Requires a mid_const_cast of a shapeal 4d array
+void print_2(const float****a, int n1, int n2, int n3, int n4);
+
+// print_3 takes a tensor, which is a pointer to a set of pointers to
+// a set of pointers to a set of pointers. The row pointers are
+// constant, but the elements would be changable.
+// - Not (logically) const-correct.
+// - A non-const shapeal 4d array can be passed right in.
+void print_3(float *const*const*const* a, int n1, int n2, int n3, int n4);
+
+// print_4 takes a constant tensor, as a set of pointers to rows. Both
+// the row pointers and the elements are const, and can't be changed.
+// - Const-correct.
+// - A const shapeal 4d array can be passed right in.
+void print_4(const float*const*const*const*a, int n1, int n2, int n3, int n4);
+
+// print_5 wants the tensor as a contiguous memory block.
+// because of const, print_5 cannot change the elements of a. 
+// Dangerous, and very common.
+// - Not (logically) const-correct
+// - Requires a const-cast.
+void print_5(float *a, int n1, int n2, int n3, int n4);
+
+// print_6 wants the constant tensor as a contiguous memory block.
+// because of const, print_6 cannot change the elements of a. 
+// - Const-correct
+// - A const shapeal 4d array can be passed right in.
+void print_6(const float *a, int n1, int n2, int n3, int n4);
+
+// print_7 takes the wrapper 4d class, which already contains its dimensions
+// because of const, print_7 cannot change the elements of a.
+// - Const-correct.
+// - A non-const shapeal 4d array can, of course, be passed right in.
+void print_7(const Shape<float,4> &a);
+
+// (implementations at the end)
+
+/////////////////////////////////////////////////////////
+
+#include <iostream>
+using std::cout;
+using std::endl;
+
+int main() 
+{
+    const int n1 = 2;
+    const int n2 = 5;
+    const int n3 = 4;
+    const int n4 = 3;
+    float* elements = new float[n1*n2*n3*n4];
+    Shape<float,4> a(elements,n1,n2,n3,n4);
+    //    Shape<float,4> aa(elements,n1,n2,n3,n4,2); // error
+
+    for (int i=0;i<n1;i++)
+      for (int j=0;j<n2;j++)
+        for (int k=0;k<n3;k++)
+          for (int l=0;l<n4;l++)
+            a[i][j][k][l]=(((i+1)*10+j+1)*10+k+1)*10+l+1;
+
+    print_1(a.cptr(), a.extent(0), a.extent(1), a.extent(2), a.extent(3)); 
+    print_2(a.cref().cptr(), a.extent(0), a.extent(1), a.extent(2), a.extent(3)); 
+    print_3(a.ptr(), a.extent(0), a.extent(1), a.extent(2), a.extent(3));
+    float *const*const*const* aptr = a.ptr();
+    print_4(a.ptr(), a.extent(0), a.extent(1), a.extent(2), a.extent(3));
+    print_5(a.data(), a.extent(0), a.extent(1), a.extent(2), a.extent(3));
+    print_6(a.data(), a.extent(0), a.extent(1), a.extent(2), a.extent(3));
+    print_7(a);
+    
+    const Shape<float,4>& c=a; // note the const
+
+ // print_1(a, c.extent(0), c.extent(1), c.extent(2), c.extent(3)); won't work, one needs:
+    print_1(c.cptr(), c.extent(0), c.extent(1), c.extent(2), c.extent(3)); 
+ // print_2(c, c.extent(0), c.extent(1), c.extent(2), c.extent(3)); won't work, one needs:
+    print_2(c.cref().cptr(), c.extent(0), c.extent(1), c.extent(2), c.extent(3)); 
+ // print_3(c, c.extent(0), c.extent(1), c.extent(2), c.extent(3)); won't work, one needs
+    print_3(c.ptr(), c.extent(0), c.extent(1), c.extent(2), c.extent(3)); 
+    print_4(c.ptr(), c.extent(0), c.extent(1), c.extent(2), c.extent(3));
+ // print_5(c, c.extent(0), c.extent(1), c.extent(2), c.extent(3)); won't work, one needs
+    print_5(c.data(), c.extent(0), c.extent(1), c.extent(2), c.extent(3));
+    print_6(c.data(), c.extent(0), c.extent(1), c.extent(2), c.extent(3));
+    print_7(c);
+
+    delete[] elements;
+
+    //return 0;
+    float b[n1][n2][n3][n4];
+
+    for (int i=0;i<n1;i++)
+      for (int j=0;j<n2;j++)
+        for (int k=0;k<n3;k++)
+          for (int l=0;l<n4;l++)
+            b[i][j][k][l]=(((i+1)*10+j+1)*10+k+1)*10+l+1;
+
+ // print_1(b,n1,n2,n3,n4);  // won't compile
+ // print_2(b,n1,n2,n3,n4);  // won't compile
+ // print_3(b,n1,n2,n3,n4);  // won't compile
+ // print_4(b,n1,n2,n3,n4);  // won't compile
+ // print_5(b,n1,n2,n3,n4);  // won't compile
+ // print_6(b,n1,n2,n3,n4);  // won't compile
+ // print_7(b);  // won't compile
+ // But one can insist by conversion to shape:
+    print_1(make_shape(b).cptr(),n1,n2,n3,n4);
+    print_2(make_shape(b).cref().cptr(),n1,n2,n3,n4);
+    print_3(make_shape(b).ptr(),n1,n2,n3,n4);
+    print_4(make_shape(b).ptr(),dim_shape(b,0),dim_shape(b,1),dim_shape(b,2),dim_shape(b,3));
+ // Note: these automatically get unconverted to a double pointer!
+ // The contiguous version are easier:
+    print_5(b[0][0][0],n1,n2,n3,n4);
+    print_6(b[0][0][0],n1,n2,n3,n4);
+ // And print_7 expects a shape2d, so needs conversion:
+    print_7(make_shape(b));
+}
+
+/////////////////////////////////////////////////////////
+void print_1(float****a, int n1, int n2, int n3, int n4) 
+{
+    for (int i=0;i<n1;i++) {
+      for (int j=0;j<n2;j++) {
+        for (int k=0;k<n3;k++) {
+          for (int l=0;l<n4;l++) {
+            cout << a[i][j][k][l] << ' ';
+          }
+          cout << "     \t";
+        }
+        cout << endl;
+      }
+      cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_2(const float****a, int n1, int n2, int n3, int n4) 
+{
+    for (int i=0;i<n1;i++) {
+      for (int j=0;j<n2;j++) {
+        for (int k=0;k<n3;k++) {
+          for (int l=0;l<n4;l++) {
+            cout << a[i][j][k][l] << ' ';
+          }
+          cout << "     \t";
+        }
+        cout << endl;
+      }
+      cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_3(float *const*const*const*const a, int n1, int n2, int n3, int n4) 
+{
+    for (int i=0;i<n1;i++) {
+      for (int j=0;j<n2;j++) {
+        for (int k=0;k<n3;k++) {
+          for (int l=0;l<n4;l++) {
+            cout << a[i][j][k][l] << ' ';
+          }
+          cout << "     \t";
+        }
+        cout << endl;
+      }
+      cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_4(const float*const*const*const*a, int n1, int n2, int n3, int n4) 
+{
+    for (int i=0;i<n1;i++) {
+      for (int j=0;j<n2;j++) {
+        for (int k=0;k<n3;k++) {
+          for (int l=0;l<n4;l++) {
+            cout << a[i][j][k][l] << ' ';;
+          }
+          cout << "     \t";
+        }
+        cout << endl;
+      }
+      cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_5(float *a, int n1, int n2, int n3, int n4) 
+{
+    for (int i=0;i<n1;i++) {
+      for (int j=0;j<n2;j++) {
+        for (int k=0;k<n3;k++) {
+          for (int l=0;l<n4;l++) {
+            cout << a[((i*n2+j)*n3+k)*n4+l] << ' ';
+          }
+          cout << "     \t";
+        }
+        cout << endl;
+      }
+      cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_6(const float *a, int n1, int n2, int n3, int n4) 
+{
+    for (int i=0;i<n1;i++) {
+      for (int j=0;j<n2;j++) {
+        for (int k=0;k<n3;k++) {
+          for (int l=0;l<n4;l++) {
+            cout << a[((i*n2+j)*n3+k)*n4+l] << ' ';
+          }
+          cout << "     \t";
+        }
+        cout << endl;
+      }
+      cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_7(const Shape<float,4> &a) 
+{
+  for (int i=0;i<a.extent(0);i++) {
+    for (int j=0;j<a.extent(1);j++) {
+      for (int k=0;k<a.extent(2);k++) {
+        for (int l=0;l<a.extent(3);l++) {
+          cout << a[i][j][k][l] << ' ';
+        }
+        cout << "     \t";
+      }
+      cout << endl;
+    }
+    cout << endl;
+  }
+  cout << endl;
+}
+/////////////////////////////////////////////////////////

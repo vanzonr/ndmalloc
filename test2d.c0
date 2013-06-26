@@ -1,0 +1,194 @@
+#include "shape.h"
+#include "shapeauto.h"
+
+// Six different signatures of a print function for a matrix: 
+
+// print_1 takes a double-pointer matrix, whose elements and row pointers could be changed. Dangerous.
+// - Not const-correct, but common in non-const (often C) libraries.  
+// - Will require a call to ptr_no_const
+void print_1(float**a, int n, int m);
+// print_2 takes a matrix with const elements, but whose row pointers could in principle be changed. Dangerous, but not uncommon!
+// - Not const-correct.
+// - Requires a ptr_no_mid_const of a shapeal 2d array
+void print_2(const float**a, int n, int m);
+// print_3 takes a matrix, which is a pointer to a set of pointers. The
+// row pointers are constant, but the elements would be changable.
+// - Not (logically) const-correct.
+// - A non-const shapeal 2d array can be passed right in.
+void print_3(float *const* a, int n, int m);
+// print_4 takes a constant matrix, as a set of pointers to rows. Both
+// the row pointers and the elements are const, and can't be changed.
+// - Const-correct.
+// - A const shapeal 2d array can be passed right in.
+void print_4(const float*const*a, int n, int m);
+// print_5 wants the matrix as a contiguous memory block.
+// because of const, print_5 cannot change the elements of a. 
+// Dangerous, and very common.
+// - Not (logically) const-correct
+// - Requires a const-cast.
+void print_5(float *a, int n, int m);
+// print_6 wants the constant matrix as a contiguous memory block.
+// because of const, print_6 cannot change the elements of a. 
+// - Const-correct
+// - A const shapeal 2d array can be passed right in.
+void print_6(const float *a, int n, int m);
+// print_7 takes the wrapper 2d class, which already contains its dimenstions
+// because of const, print_7 cannot change the elements of a.
+// - Const-correct.
+// - A non-const shapeal 2d array can, of course, be passed right in.
+void print_7(const Shape<float,2> &a);
+// print_8 takes the wrapper 2d class, which already contains its dimenstions
+// because of const, print_7 cannot change the elements of a.
+// - Const-correct.
+// - A non-const shapeal 2d array can, of course, be passed right in.
+void print_8(const Shape<const float,2> &a);
+
+// (implementations at the end)
+#include <iostream>
+int main() 
+{
+    const int n = 9;
+    const int m = 5;
+    float* elements = new float[m*n];
+    Shape<float,2> a(elements,n,m);
+
+
+    try {
+      a[10][10] = 8;
+    }
+    catch (std::exception&e) {
+      std::cout << "Intentional index error\n" << e.what() << "\n";
+    }
+
+    for (int i=0;i<n;i++)
+      for (int j=0;j<m;j++)
+        a[i][j]=(i+1)*10+j+1;
+
+    // copy partial shape, here, row 1
+    Shape<float,1> a1 = a[1];
+
+    const Shape<float,2>& c=a; // note the const
+
+ // print_1(c, a.extent(0), a.extent(1)); won't work, one needs:
+    print_1(c.cptr(), c.extent(0), c.extent(1));
+ // print_2(c, c.extent(0), c.extent(1)); // won't work, one needs:
+    print_2(c.cref().cptr(), c.extent(0), c.extent(1)); 
+    print_3(c.ptr(), c.extent(0), c.extent(1));
+    print_4(c.ptr(), c.extent(0), c.extent(1));
+    print_5(c.data(), c.extent(0), c.extent(1));
+    print_6(c.data(), c.extent(0), c.extent(1));
+    print_7(c);
+    print_8(c.cref());
+    delete[] elements;
+
+    float b[n][m];
+
+    for (int i=0;i<n;i++)
+      for (int j=0;j<m;j++)
+        b[i][j]=(i+1)*10+j+1;
+
+ // print_1(b,n,m);  // won't compile
+ // print_2(b,n,m);  // won't compile
+ // print_3(b,n,m);  // won't compile
+ // print_4(b,n,m);  // won't compile
+ // print_5(b,n,m);  // won't compile
+ // print_6(b,n,m);  // won't compile
+ // print_7(b);  // won't compile
+ // But one can insist by conversion to shape:
+    print_1(make_shape(b).cptr(),n,m);
+    print_2(make_shape(b).cref().cptr(),n,m);
+    print_3(make_shape(b).ptr(),n,m);
+    print_4(make_shape(b).ptr(),dim_shape(b,0),dim_shape(b,1));
+ // Note: these automatically get unconverted to a double pointer!
+ // The contiguous version are easier:
+    print_5(b[0],n,m);
+    print_6(b[0],n,m);
+ // And print_7 expects a Shape<float,2>, so needs conversion:
+    print_7(make_shape(b));
+}
+
+/////////////////////////////////////////////////////////
+#include <iostream>
+using std::cout;
+using std::endl;
+/////////////////////////////////////////////////////////
+void print_1(float**a, int n, int m) 
+{
+    for (int i=0;i<n;i++) {
+        for (int j=0;j<m;j++) 
+            cout << a[i][j] << ' ';
+        cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_2(const float**a, int n, int m) 
+{
+    for (int i=0;i<n;i++) {
+        for (int j=0;j<m;j++) 
+            cout << a[i][j] << ' ';
+        cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_3(float *const*const a, int n, int m) 
+{
+    for (int i=0;i<n;i++) {
+        for (int j=0;j<m;j++) 
+            cout << a[i][j] << ' ';
+        cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_4(const float*const*a, int n, int m) 
+{
+    for (int i=0;i<n;i++) {
+        for (int j=0;j<m;j++) 
+            cout << a[i][j] << ' ';
+        cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_5(float *a, int n, int m) 
+{
+    for (int i=0;i<n;i++) {
+        for (int j=0;j<m;j++) 
+            cout << a[i*m+j] << ' ';
+        cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_6(const float *a, int n, int m) 
+{
+    for (int i=0;i<n;i++) {
+        for (int j=0;j<m;j++) 
+            cout << a[i*m+j] << ' ';
+        cout << endl;
+    }
+    cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_7(const Shape<float,2> &a) 
+{
+  for (int i=0;i<a.extent(0);i++) {
+    for (int j=0;j<a.extent(1);j++) 
+      cout << a[i][j] << ' ';
+    cout << endl;
+  }
+  cout << endl;
+}
+/////////////////////////////////////////////////////////
+void print_8(const Shape<const float,2> &a) 
+{
+  for (int i=0;i<a.extent(0);i++) {
+    for (int j=0;j<a.extent(1);j++) 
+      cout << a[i][j] << ' ';
+    cout << endl;
+  }
+  cout << endl;
+}
+/////////////////////////////////////////////////////////

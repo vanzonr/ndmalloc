@@ -18,7 +18,7 @@
 void* amalloc(size_t size, size_t rank, ...);
 void* acalloc(size_t size, size_t rank, ...);
 void* arealloc(void* ptr, size_t size, size_t rank, ...);
-void  afree(void* ptr);
+void  afree(const void* ptr);
 /*
  * Description:
  *
@@ -66,7 +66,7 @@ void  afree(void* ptr);
  * about the multi-dimensional structure is associated with each
  * dynamicaly allocated multi-dimensional array.
  */
-size_t asize(void* ptr, size_t dim);
+size_t asize(const void* ptr, size_t dim);
 
 /*
  * Function to get the start of the data (useful for library calls).
@@ -84,7 +84,7 @@ void* adata(void* ptr);
  * allocated multi-dimensional array.  Returns 0 if 'ptr' was not
  * allocated with amalloc, acalloc or arealloc.
  */
-size_t arank(void* ptr);
+size_t arank(const void* ptr);
 
 /*
  * Function to get the shape of the multi-dimensional array This works
@@ -93,7 +93,7 @@ size_t arank(void* ptr);
  * allocated multi-dimensional array. Returns NULL if 'ptr' was not
  * allocated with amalloc, acalloc or arealloc.
  */
-const size_t* ashape(void* ptr);
+const size_t* ashape(const void* ptr);
 
 /* 
  * Function to check 'ptr' is a known dynamicaly allocated array as
@@ -102,7 +102,7 @@ const size_t* ashape(void* ptr);
  * Can be used to see if adata, arank, asize, and ashape will give
  * useful information about the array.
  */
-int aknown(void* ptr);
+int aknown(const void* ptr);
 
 #endif
 
