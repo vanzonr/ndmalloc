@@ -13,7 +13,8 @@
 #include <stddef.h>   /* for the definition of size_t */
 
 /* 
- * Mimic the regular malloc/free/calloc/realloc set.
+ * Mimic the regular malloc/free/calloc/realloc set for allocating and
+ * deallocating memory for multi-dimensional arrays.
  */
 void* amalloc(size_t size, size_t rank, ...);
 void* acalloc(size_t size, size_t rank, ...);
@@ -61,58 +62,39 @@ void  afree(void* ptr);
  */
 
 /*
- * Function to get the extent in any given dimension. 
- * This works because an internal header containing the information
- * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.
+ * Functions to get information about the multi-dimensional arrays
+ * allocated by amalloc, acalloc or arealloc.
  */
-size_t asize(const void* ptr, size_t dim);
-
-/*
- * Function to get the start of the data (useful for library calls).
- * This works because an internal header containing the information
- * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.  Returns NULL if ptr
- * was not allocated with amalloc, acalloc or arealloc.
- */
-void* adata(void* ptr);
-
-/*
- * Function to get the rank of the multi-dimensional array.  This
- * works because an internal header containing the information about
- * the multi-dimensional structure is associated with each dynamicaly
- * allocated multi-dimensional array.  Returns 0 if 'ptr' was not
- * allocated with amalloc, acalloc or arealloc.
- */
+int    aknown(const void* ptr);
+void*  adata(void* ptr);
 size_t arank(const void* ptr);
-
-/*
- * Function to get the shape of the multi-dimensional array This works
- * because an internal header containing the information about the
- * multi-dimensional structure is associated with each dynamicaly
- * allocated multi-dimensional array. Returns NULL if 'ptr' was not
- * allocated with amalloc, acalloc or arealloc.
- */
-const size_t* ashape(const void* ptr);
-
-/*
- * Function to get the total number of elements in the
- * multi-dimensional array. This works because an internal header
- * containing the information about about the multi-dimensional
- * structure is associated with each dynamicaly allocated
- * multi-dimensional array. Returns 0 if no dynamic array is
- * associated with 'ptr'.
- */
+size_t asize(const void* ptr, size_t dim);
 size_t afullsize(const void* ptr);
-
-/* 
- * Function to check 'ptr' is a known dynamicaly allocated array as
- * returned by amalloc, acalloc, or arealloc.  Returns 1 if 'ptr' was
+const size_t* ashape(const void* ptr);
+/*
+ * The function 'aknown' checks if 'ptr' is a 'known multi-dimensional
+ * array', i.e., whether it was allocated using amalloc, acalloc, or
+ * arealloc.  The return value is 1 if 'ptr' was successfully
  * allocated with amalloc, acalloc or arealloc, and 0 if it was not.
- * Can be used to see if adata, arank, asize, and ashape will give
- * useful information about the array.
+ *
+ * The function 'adata' * returns the start of the data, or NULL if
+ * 'ptr' is not a known multi-dimensional array.
+ *
+ * The function 'arank' * returns the rank of multi-dimensional array
+ * 'ptr', or zero if 'ptr' is not a known multi-dimensional array.
+ *
+ * The function 'asize' returns the extent in the given dimension
+ * 'dim', If 'ptr' is not a known multi-dimensional array, or if 'dim'
+ * is larger than the rank of that array, 'asize' returns zero.
+ *
+ * The function 'afullsize' returns the total number of elements in
+ * the multi-dimensional arrays (the product of all asize's). If 'ptr'
+ * is not a known multi-dimensional array, 'afullsize' returns zero.
+ *
+ * The function 'ashape' returns a pointer the first element of an
+ * array of sintegers which give the shape of the multi-dimensional
+ * array, or NULL if 'ptr' is not a known multi-dimensional array.
  */
-int aknown(const void* ptr);
 
 #endif
 
