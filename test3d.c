@@ -8,57 +8,47 @@
 /*
  * print_1 takes a double-pointer tensor, whose elements and row
  * pointers could be changed. Dangerous.
- * - Not const-correct, but common in non-const (often C) libraries.  
- * - Will require a call to no_const
+ * Not const-correct, but common in non-const libraries.  
  */
 void print_1(float***a, int n, int m, int l);
 
 /*
  * print_2 takes a tensor whose elements are constant, but whose row
  * pointers could in principle be changed. Dangerous, but common!
- * - Not const-correct.
- * - Requires a mid_const_cast of a shapeal 3d array
+ * Not const-correct.
 */
 void print_2(const float***a, int n, int m, int l);
 
 /*
  * print_3 takes a tensor, which is a pointer to a set of pointers. The
  * row pointers are constant, but the elements would be changable.
- * - Not (logically) const-correct.
- * - A non-const shaped 3d array can be passed right in.
  */
 void print_3(float *const*const* a, int n, int m, int l);
 
 /*
  * print_4 takes a constant tensor, as a set of pointers to rows. Both
  * the row pointers and the elements are const, and can't be changed.
- * - Const-correct.
- * - A const shaped 3d array can be passed right in.
+ * Const-correct.
  */
 void print_4(const float*const*const*a, int n, int m, int l);
 
 /*
  * print_5 wants the tensor as a contiguous memory block.
- * because of const, print_5 cannot change the elements of a. 
+ * because of const, print_5 couldt change the elements of a. 
  * Dangerous, and very common.
- * - Not (logically) const-correct
- * - Requires a const-cast.
  */
 void print_5(float *a, int n, int m, int l);
 
 /*
  * print_6 wants the constant tensor as a contiguous memory block.
  * because of const, print_6 cannot change the elements of a. 
- * - Const-correct
- * - A const shapeal 3d array can be passed right in.
+ * Const-correct.
  */
 void print_6(const float *a, int n, int m, int l);
 
 /*
- * print_7 takes the wrapper 3d class, which already contains its dimensions
- * because of const, print_7 cannot change the elements of a.
- * - Const-correct.
- * - A non-const shaped 3d array can, of course, be passed right in.
+ * print_7 takes a amalloc'ed pointer, which already contains its dimensions.
+ * Not const-correct.
  */
 void print_7(float*** a);
 
