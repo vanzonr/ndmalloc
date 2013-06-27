@@ -75,19 +75,17 @@ void* sarealloc (void* ptr, size_t size, size_t rank, const size_t* n);
  * allocated by amalloc, acalloc or arealloc.
  */
       int     aknown    (const void* ptr);
-      void*   adata     (      void* ptr);
       size_t  arank     (const void* ptr);
       size_t  asize     (const void* ptr, size_t dim);
       size_t  afullsize (const void* ptr);
+      void*   adata     (      void* ptr);
+const void*   acdata    (const void* ptr);
 const size_t* ashape    (const void* ptr);
 /*
  * The function 'aknown' checks if 'ptr' is a 'known multi-dimensional
  * array', i.e., whether it was allocated using amalloc, acalloc, or
  * arealloc.  The return value is 1 if 'ptr' was successfully
  * allocated with amalloc, acalloc or arealloc, and 0 if it was not.
- *
- * The function 'adata' * returns the start of the data, or NULL if
- * 'ptr' is not a known multi-dimensional array.
  *
  * The function 'arank' * returns the rank of multi-dimensional array
  * 'ptr', or zero if 'ptr' is not a known multi-dimensional array.
@@ -99,6 +97,11 @@ const size_t* ashape    (const void* ptr);
  * The function 'afullsize' returns the total number of elements in
  * the multi-dimensional arrays (the product of all asize's). If 'ptr'
  * is not a known multi-dimensional array, 'afullsize' returns zero.
+ *
+ * The function 'adata' * returns the start of the data, or NULL if
+ * 'ptr' is not a known multi-dimensional array.  The 'acdata' does
+ * the same but a returns a const pointer, and can be used 
+ * with a const pointer as an argument.
  *
  * The function 'ashape' returns a pointer the first element of an
  * array of sintegers which give the shape of the multi-dimensional

@@ -489,6 +489,14 @@ void* adata(void* ptr)
     else
         return NULL;
 }
+const void* acdata(const void* ptr)
+{
+    const header_t* hdr = da_get_header_address(ptr);
+    if (da_is_header(hdr))
+        return hdr->data;
+    else
+        return NULL;
+}
 
 /*
  * Function to get the rank of the multi-dimensional array.
