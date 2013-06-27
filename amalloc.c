@@ -17,23 +17,21 @@
  * Define a header struct, with all the information about the
  * dynamically allocated array, except the pointer-to-pointer.  This
  * header will be placed before the addresses holdinng the data and
- * array pointers. A special magic_mark is added to the rank field, as
- * a check that we do indeed have a dynamically allocated array.
+ * array pointers. A special magic_mark is added, as a check that we
+ * do indeed have a dynamically allocated array.
  */
 typedef struct {
-    void*   data;         /* Pointer to the contiguous elements     */
-    size_t  size;         /* How big is each element?               */
-    size_t  rank;         /* #dimensions, but with magic_mark added */
-    size_t* shape;        /* What are those dimensions?             */
+    void*   data;         /* Pointer to the contiguous elements  */
+    size_t  size;         /* How big is each element?            */
+    long    rank;         /* number of dimensions                */
+    long    magic;        /* magic_mark                          */
+    size_t* shape;        /* What are those dimensions?          */
 } header_t;
 
 /* 
- * Define the magic mark to be embedded in rank, as well as some
- * useful masks
+ * Define the magic mark to be embedded in the header_t
  */
-#define magic_mark       0x19720000
-#define magic_mask       0xffff0000
-#define magic_unmask     0x0000ffff
+#define magic_mark       0x1972
 
 /* 
  * Define an alignment policy, such that the headers and the actual
@@ -53,9 +51,9 @@ typedef struct {
  *
  */
 
-
 /*
- * Internal function to get the hidden header given the pointer-to-pointer array
+ * Internal function to get the hidden header given the
+ * pointer-to-pointer array
  */
 static 
 header_t* da_get_header_address(const void* array)
@@ -64,12 +62,12 @@ header_t* da_get_header_address(const void* array)
 }
 
 /*
- * Internal function to check that a given header has the correct magic stamp 
+ * Internal function to check that a given header has the correct magic mark
  */
 static 
 int da_is_header(const header_t* hdr)
 {
-    return (hdr != NULL) && ( (hdr->rank & magic_mask) == magic_mark );
+    return (hdr != NULL) && ( hdr->magic == magic_mark ); 
 }
 
 /*
@@ -85,7 +83,8 @@ void da_create_header( void*    array,
     header_t* hdr = da_get_header_address(array);
     hdr->data  = data;
     hdr->size  = size;
-    hdr->rank  = (rank & magic_unmask) | magic_mark;
+    hdr->rank  = rank;
+    hdr->magic = magic_mark;
     hdr->shape = shape;
 }
 
@@ -93,10 +92,7 @@ void da_create_header( void*    array,
  * Internal function to create the pointer-to-pointer structure for any rank 
  */
 static 
-void* da_create_array( void*    data,
-                       size_t   size,
-                       size_t   rank,
-                       size_t*  shape )
+void* da_create_array(void* data, size_t size, size_t rank, size_t*  shape)
 {
     if (rank <= 1) 
 
@@ -264,11 +260,40 @@ void* da_destroy_data(void* data)
  */
 
 /*
- * Routine to allocate the memory with indices from a c array
+ *  The 'amalloc' function creates a dynamically allocated multi-
+ *  dimensional array of dimensions n[0] x n[1] ... x n['rank'-1],
+ *  with elements of 'size' bytes.  The dimensions are to be given as
+ *  the variable-length arguments.  The function allocates
+ *  'size'*n[0]*n[1]*..n['rank'-1] bytes for the data, plus another
+ *  n[0]*n[1]*...n[rank-2]*sizeof(void*) bytes for the
+ *  pointer-to-pointer structure that is common for c-style arrays.
+ *  It also allocates internal buffers of moderate size (~64 bytes).
+ *  The pointer-to-pointer structure assumes that all pointers are the
+ *  same size.  The return value can be cast to a TYPE* for an array
+ *  of rank 1, TYPE** for rank 2, T*** for rank 3, etc.  .This casted
+ *  pointer can then be used in the same way a c-style array is used,
+ *  i.e., with repeated square bracket indexing.  If the memory
+ *  allocation fails, a NULL pointer is returned.  The return value
+ *  (or its casted version) can be used in calls to 'arealloc',
+ *  'afree', 'asize', 'adata', 'arank', 'ashape', 'aknown', and
+ *  'atoda'.  This works because an internal header containing the
+ *  information about the multi-dimensional structure is associated
+ *  with each dynamicaly allocated multi-dimensional array.
  */
-void* samalloc( size_t   size, 
-                size_t   rank, 
-                const size_t* shape )
+void* amalloc(size_t size, size_t rank, ...)
+{
+    void*    result;
+    size_t*  shape;
+    va_list  arglist;
+    va_start(arglist, rank);
+    shape = da_create_shape(rank, arglist);
+    va_end(arglist);
+    result = samalloc(size, rank, shape); /* calls non-variadic function */
+    da_destroy_shape(shape);
+    return result;
+}
+/* Non-variadic version */
+void* samalloc(size_t size, size_t rank, const size_t* shape)
 {
     size_t*  shapecopy;
     void*    array;
@@ -301,11 +326,23 @@ void* samalloc( size_t   size,
 }
 
 /*
- * Function to allocate and clear memory with dimensions from a c array
+ *  The 'acalloc' function has the same functionality as amalloc, but
+ *  also initialized the array to all zeros (by calling 'calloc').
  */
-void* sacalloc( size_t   size, 
-                size_t   rank, 
-                const size_t* shape )
+void* acalloc(size_t size, size_t rank, ...)
+{
+    void*    result;
+    size_t*  shape;
+    va_list  arglist;
+    va_start(arglist, rank);
+    shape = da_create_shape(rank, arglist);
+    va_end(arglist);
+    result = sacalloc(size, rank, shape); /* calls non-variadic function */
+    da_destroy_shape(shape);
+    return result;
+}
+/* Non-variadic version */
+void* sacalloc(size_t size, size_t rank, const size_t* shape)
 {
     size_t*  shapecopy;
     void*    array;
@@ -338,12 +375,30 @@ void* sacalloc( size_t   size,
 }
 
 /*
- * Function to reallocate (or reshape!) using a c array 'shape'
+ *  The 'arealloc' function chances the dimensions and/or the size of
+ *  the multi-dimenstional array 'ptr'.  The content of the array
+ *  will be unchanged in the range from the start of the region up to
+ *  the minimum of the old and new sizes.  If the change in dimensions
+ *  has changed the shape, the elements get reassigned indices
+ *  according to the row-major ordering.  If the re-allocation is
+ *  succesful, the new pointer is returned and the old one is invalid.
+ *  If the function fails, NULL is returned.  Known bug: the original
+ *  'ptr' is still deallocated when 'arealloc' fails.
  */
-void* sarealloc( void*    ptr, 
-                 size_t   size, 
-                 size_t   rank, 
-                 const size_t*  shape )
+void* arealloc(void* ptr, size_t size, size_t rank, ...)
+{
+    void* result;
+    size_t*  shape;
+    va_list arglist;
+    va_start(arglist, rank);
+    shape = da_create_shape(rank, arglist);
+    va_end(arglist);
+    result = sarealloc(ptr, size, rank, shape);
+    da_destroy_shape(shape);
+    return result;
+}
+/* Non-variadic version */
+void* sarealloc(void* ptr, size_t size, size_t rank, const size_t* shape)
 {
     void*      array;
     void*      olddata;
@@ -361,7 +416,7 @@ void* sarealloc( void*    ptr,
     hdr = da_get_header_address(ptr);
     olddata  = hdr->data;
     oldshape = hdr->shape;
-    oldrank  = (hdr->rank & magic_unmask);
+    oldrank  = hdr->rank;
 
     total_elements = da_fullsize_shape(rank, shapecopy);    
 
@@ -385,81 +440,6 @@ void* sarealloc( void*    ptr,
 }
 
 /*
- *  The 'amalloc' function creates a dynamically allocated multi-
- *  dimensional array of dimensions n[0] x n[1] ... x n['rank'-1],
- *  with elements of 'size' bytes.  The dimensions are to be given as
- *  the variable-length arguments.  The function allocates
- *  'size'*n[0]*n[1]*..n['rank'-1] bytes for the data, plus another
- *  n[0]*n[1]*...n[rank-2]*sizeof(void*) bytes for the
- *  pointer-to-pointer structure that is common for c-style arrays.
- *  It also allocates internal buffers of moderate size (~64 bytes).
- *  The pointer-to-pointer structure assumes that all pointers are the
- *  same size.  The return value can be cast to a TYPE* for an array
- *  of rank 1, TYPE** for rank 2, T*** for rank 3, etc.  .This casted
- *  pointer can then be used in the same way a c-style array is used,
- *  i.e., with repeated square bracket indexing.  If the memory
- *  allocation fails, a NULL pointer is returned.  The return value
- *  (or its casted version) can be used in calls to 'arealloc',
- *  'afree', 'asize', 'adata', 'arank', 'ashape', 'aknown', and
- *  'atoda'.  This works because an internal header containing the
- *  information about the multi-dimensional structure is associated
- *  with each dynamicaly allocated multi-dimensional array.
- */
-void* amalloc(size_t size, size_t rank, ...)
-{
-    void*    result;
-    size_t*  shape;
-    va_list  arglist;
-    va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
-    va_end(arglist);
-    result = samalloc(size, rank, shape);
-    da_destroy_shape(shape);
-    return result;
-}
-
-/*
- *  The 'acalloc' function has the same functionality as amalloc, but
- *  also initialized the array to all zeros (by calling 'calloc').
- */
-void* acalloc(size_t size, size_t rank, ...)
-{
-    void*    result;
-    size_t*  shape;
-    va_list  arglist;
-    va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
-    va_end(arglist);
-    result = sacalloc(size, rank, shape);
-    da_destroy_shape(shape);
-    return result;
-}
-
-/*
- *  The 'arealloc' function chances the dimensions and/or the size of
- *  the multi-dimenstional array 'ptr'.  The content of the array
- *  will be unchanged in the range from the start of the region up to
- *  the minimum of the old and new sizes.  If the change in dimensions
- *  has changed the shape, the elements get reassigned indices
- *  according to the row-major ordering.  If the re-allocation is
- *  succesful, the new pointer is returned and the old one is invalid.
- *  If the function fails, NULL is returned.  Known bug: the original
- *  'ptr' is still deallocated when 'arealloc' fails.
- */
-void* arealloc(void* ptr, size_t size, size_t rank, ...)
-{
-    void* result;
-    size_t*  shape;
-    va_list arglist;
-    va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
-    va_end(arglist);
-    result = sarealloc(ptr, size, rank, shape);
-    da_destroy_shape(shape);
-    return result;
-}
-
-/*
  *  The 'afree' function frees up all the memory allocated for the
  *  multi-dimensional array associates with the pointer 'ptr'.
  */
@@ -469,7 +449,7 @@ void afree(void* ptr)
         header_t* hdr = da_get_header_address(ptr);
         if (da_is_header(hdr)) {
             da_destroy_shape(hdr->shape);
-            if (hdr->data && (hdr->rank & magic_unmask) > 1) 
+            if (hdr->data && hdr->rank > 1) 
                 da_destroy_data(hdr->data);
             da_destroy_array(ptr);
         }
@@ -521,7 +501,7 @@ size_t arank(const void* ptr)
 {
     const header_t* hdr = da_get_header_address(ptr);
     if (da_is_header(hdr))
-        return hdr->rank & magic_unmask;
+        return hdr->rank;
     else
         return 0;
 }
