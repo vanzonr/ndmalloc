@@ -31,7 +31,7 @@ typedef struct {
 /* 
  * Define the magic mark to be embedded in the header_t
  */
-#define magic_mark       0x1972
+static long magic_mark = 0x19720616;
 
 /* 
  * Define an alignment policy, such that the headers and the actual
