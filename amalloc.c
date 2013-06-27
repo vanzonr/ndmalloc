@@ -58,7 +58,7 @@ typedef struct {
  * Internal function to get the hidden header given the pointer-to-pointer array
  */
 static 
-header_t* da_get_header_address( const void* array )
+header_t* da_get_header_address(const void* array)
 {    
     return array==NULL?0:((header_t*)((char*)array - header_size));
 }
@@ -67,7 +67,7 @@ header_t* da_get_header_address( const void* array )
  * Internal function to check that a given header has the correct magic stamp 
  */
 static 
-int da_is_header( const header_t* hdr )
+int da_is_header(const header_t* hdr)
 {
     return (hdr != NULL) && ( (hdr->rank & magic_mask) == magic_mark );
 }
@@ -149,8 +149,7 @@ void* da_destroy_array(void* ptr)
  * Internal function to create a dimension array from a va_list
  */
 static 
-size_t* da_create_shape( size_t   rank, 
-                         va_list  arglist )
+size_t* da_create_shape(size_t rank, va_list arglist)
 {
     size_t* shape = malloc(sizeof(size_t)*rank);    
     if (shape != NULL) {
@@ -162,12 +161,46 @@ size_t* da_create_shape( size_t   rank,
 }
 
 /*
+ * Internal function to copy a dimension array
+ */
+static 
+size_t* da_copy_shape(size_t rank, const size_t* from)
+{
+    size_t* shape = NULL;
+    if (from != NULL) {
+        shape = malloc(sizeof(size_t)*rank);    
+        if (shape != NULL) {
+            int i;
+            for (i = 0; i < rank; i++) { 
+                shape[i] = from[i];
+            }
+        }
+    }
+    return shape;
+}
+
+/*
  * Internal function to release the memory allocated by da_create_shape
  */
 static 
-void* da_destroy_shape(void* ptr)
+void* da_destroy_shape(size_t* ptr)
 {
     free(ptr);
+}
+
+/*
+ * Internal function to determine total number of elements in a shape
+ */
+static 
+size_t da_fullsize_shape(size_t rank, size_t* ptr)
+{
+    size_t fullsize, i;
+    if (ptr == NULL) 
+        return 0;
+    fullsize = 1;
+    for (i=0; i<rank; i++)
+        fullsize *= ptr[i];
+    return fullsize;
 }
 
 /*
@@ -175,7 +208,7 @@ void* da_destroy_shape(void* ptr)
  * any required extra space for bookkeeping.
  */
 static 
-void* da_create_data( size_t nmemb, size_t size  )
+void* da_create_data(size_t nmemb, size_t size)
 {
     char* data = malloc(nmemb*size + header_size);
     if (data != NULL)
@@ -188,7 +221,7 @@ void* da_create_data( size_t nmemb, size_t size  )
  * any required extra space for bookkeeping.
  */
 static 
-void* da_create_clear_data( size_t nmemb, size_t size  )
+void* da_create_clear_data(size_t nmemb, size_t size)
 {
     size_t chunks = (nmemb*size+header_size+mem_align_bytes-1)
                     /mem_align_bytes;
@@ -203,9 +236,7 @@ void* da_create_clear_data( size_t nmemb, size_t size  )
  * any required extra space for bookkeeping, keeping old data values.
  */
 static 
-void* da_recreate_data( void*  data, 
-                        size_t nmemb, 
-                        size_t size  )
+void* da_recreate_data(void* data, size_t nmemb, size_t size)
 {
     if (data != NULL) {
         char* newdata = realloc((char*)data - header_size, 
@@ -235,40 +266,47 @@ void* da_destroy_data(void* data)
 static 
 void* da_samalloc( size_t   size, 
                    size_t   rank, 
-                   size_t*  shape )
+                   const size_t* shape )
 {
+    size_t*  shapecopy;
     void*    array;
     void*    data;
     size_t   i, total_elements;
 
     if (shape == NULL) 
         return NULL;
-  
-    total_elements = 1;
-    for (i = 0; i < rank; i++) 
-        total_elements *= shape[i];
+
+    shapecopy = da_copy_shape(rank, shape);  
+    if (shapecopy == NULL)
+       return NULL;
+
+    total_elements = da_fullsize_shape(rank, shapecopy);
 
     data = da_create_data(total_elements, size);
-    if (data == NULL) 
+    if (data == NULL) {
+        da_destroy_shape(shapecopy);
         return NULL;
-    
-    array = da_create_array(data, size, rank, shape);
-    if (array == NULL)
+    }
+
+    array = da_create_array(data, size, rank, shapecopy);
+    if (array == NULL) {
+        da_destroy_shape(shapecopy);
         da_destroy_data(data);
-    else 
-        da_create_header(array, data, size, rank, shape);
+    } else 
+        da_create_header(array, data, size, rank, shapecopy);
 
     return array;
 }
 
 /*
- * Internal function to allocate and clear memory with dimensions from a va_list
+ * Internal function to allocate and clear memory with dimensions from a c array
  */
 static 
 void* da_sacalloc( size_t   size, 
                    size_t   rank, 
-                   size_t*  shape )
+                   const size_t* shape )
 {
+    size_t*  shapecopy;
     void*    array;
     void*    data;
     size_t   i, total_elements;
@@ -276,19 +314,24 @@ void* da_sacalloc( size_t   size,
     if (shape == NULL) 
         return NULL;
     
-    total_elements = 1;
-    for (i = 0; i < rank; i++) 
-        total_elements *= shape[i];
-    
-    data = da_create_clear_data(total_elements, size);
-    if (data == NULL) 
-        return NULL;
+    shapecopy = da_copy_shape(rank, shape);  
+    if (shapecopy == NULL)
+       return NULL;
 
-    array = da_create_array(data, size, rank, shape);
-    if (array == NULL) 
+    total_elements = da_fullsize_shape(rank, shapecopy);    
+
+    data = da_create_clear_data(total_elements, size);
+    if (data == NULL) {
+        da_destroy_shape(shapecopy);    
+        return NULL;
+    }
+
+    array = da_create_array(data, size, rank, shapecopy);
+    if (array == NULL) {
+        da_destroy_shape(shapecopy);
         da_destroy_data(data);
-    else
-        da_create_header(array, data, size, rank, shape);
+    } else
+        da_create_header(array, data, size, rank, shapecopy);
 
     return array;
 }
@@ -300,37 +343,40 @@ static
 void* da_sarealloc( void*    ptr, 
                     size_t   size, 
                     size_t   rank, 
-                    size_t*  shape )
+                    const size_t*  shape )
 {
     void*      array;
     void*      olddata;
     void*      data;
     size_t     i, total_elements, oldrank;
     size_t*    oldshape;
+    size_t*    shapecopy;
     header_t*  hdr;
     
     if (shape == NULL) 
         return NULL;
+
+    shapecopy = da_copy_shape(rank, shape);
 
     hdr = da_get_header_address(ptr);
     olddata  = hdr->data;
     oldshape = hdr->shape;
     oldrank  = (hdr->rank & magic_unmask);
 
-    total_elements = 1;
-    for (i = 0; i < rank; i++) 
-        total_elements *= shape[i];
+    total_elements = da_fullsize_shape(rank, shapecopy);    
 
     data = da_recreate_data(olddata, total_elements, size);
-    if (data == NULL) 
+    if (data == NULL) {
+        da_destroy_shape(shapecopy);
         return NULL;
-
-    array = da_create_array(data, size, rank, shape);
+    }
+    array = da_create_array(data, size, rank, shapecopy);
     if (array == NULL) {
+        da_destroy_shape(shapecopy);
         da_destroy_data(data);
         return NULL;
     } else {
-        da_create_header(array, data, size, rank, shape);
+        da_create_header(array, data, size, rank, shapecopy);
         da_destroy_shape(oldshape);
         if (oldrank > 1) 
             da_destroy_array(ptr);
@@ -374,8 +420,7 @@ void* amalloc(size_t size, size_t rank, ...)
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
     result = da_samalloc(size, rank, shape);
-    if (result==NULL) 
-        da_destroy_shape(shape);
+    da_destroy_shape(shape);
     return result;
 }
 
@@ -392,8 +437,7 @@ void* acalloc(size_t size, size_t rank, ...)
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
     result = da_sacalloc(size, rank, shape);
-    if (result==NULL) 
-        da_destroy_shape(shape);
+    da_destroy_shape(shape);
     return result;
 }
 
@@ -417,8 +461,7 @@ void* arealloc(void* ptr, size_t size, size_t rank, ...)
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
     result = da_sarealloc(ptr, size, rank, shape);
-    if (result==NULL) 
-        da_destroy_shape(shape);
+    da_destroy_shape(shape);
     return result;
 }
 
@@ -501,6 +544,22 @@ const size_t* ashape(const void* ptr)
     header_t* hdr = da_get_header_address(ptr);
     if (da_is_header(hdr))
         return hdr->shape;
+    else
+        return 0;
+}
+
+/*
+ * Function to get the total number of elements in the multi-dimensional  
+ * array. This works because an internal header containing the information about
+ * about the multi-dimensional structure is associated with each dynamicaly
+ * allocated multi-dimensional array. Returns 0 if no dynamic array
+ * is associated with 'ptr'.
+ */
+size_t afullsize(const void* ptr)
+{
+    header_t* hdr = da_get_header_address(ptr);
+    if (da_is_header(hdr))
+        return da_fullsize_shape(hdr->rank, hdr->shape);
     else
         return 0;
 }

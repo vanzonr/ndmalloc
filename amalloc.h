@@ -95,6 +95,16 @@ size_t arank(const void* ptr);
  */
 const size_t* ashape(const void* ptr);
 
+/*
+ * Function to get the total number of elements in the
+ * multi-dimensional array. This works because an internal header
+ * containing the information about about the multi-dimensional
+ * structure is associated with each dynamicaly allocated
+ * multi-dimensional array. Returns 0 if no dynamic array is
+ * associated with 'ptr'.
+ */
+size_t afullsize(const void* ptr);
+
 /* 
  * Function to check 'ptr' is a known dynamicaly allocated array as
  * returned by amalloc, acalloc, or arealloc.  Returns 1 if 'ptr' was
