@@ -135,7 +135,7 @@ void* da_create_array(void* data, size_t size, size_t rank, size_t*  shape)
  * Internal function to release the memory allocated by da_create_array 
  */
 static 
-void* da_destroy_array(void* ptr)
+void da_destroy_array(void* ptr)
 {
     if (ptr != NULL)
         free((char*)ptr - header_size);
@@ -179,7 +179,7 @@ size_t* da_copy_shape(size_t rank, const size_t* from)
  * Internal function to release the memory allocated by da_create_shape
  */
 static 
-void* da_destroy_shape(size_t* ptr)
+void da_destroy_shape(size_t* ptr)
 {
     free(ptr);
 }
@@ -249,7 +249,7 @@ void* da_recreate_data(void* data, size_t nmemb, size_t size)
  * da_create_data, da_recreate_data, or da_ccreate_data
  */
 static 
-void* da_destroy_data(void* data)
+void da_destroy_data(void* data)
 {
     if (data!=NULL)
         free((char*)data - header_size);
@@ -298,7 +298,7 @@ void* samalloc(size_t size, size_t rank, const size_t* shape)
     size_t*  shapecopy;
     void*    array;
     void*    data;
-    size_t   i, total_elements;
+    size_t   total_elements;
 
     if (shape == NULL) 
         return NULL;
@@ -347,7 +347,7 @@ void* sacalloc(size_t size, size_t rank, const size_t* shape)
     size_t*  shapecopy;
     void*    array;
     void*    data;
-    size_t   i, total_elements;
+    size_t   total_elements;
     
     if (shape == NULL) 
         return NULL;
@@ -403,7 +403,8 @@ void* sarealloc(void* ptr, size_t size, size_t rank, const size_t* shape)
     void*      array;
     void*      olddata;
     void*      data;
-    size_t     i, total_elements, oldrank;
+    size_t     total_elements;
+    size_t     oldrank;
     size_t*    oldshape;
     size_t*    shapecopy;
     header_t*  hdr;

@@ -39,6 +39,7 @@ int main()
     /* float* ba = amake1(b); */
     /* print_3(ba); */
     /* makefree(ba); */
+    return 0;
 }
 
 
