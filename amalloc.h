@@ -18,7 +18,7 @@
 void* amalloc(size_t size, size_t rank, ...);
 void* acalloc(size_t size, size_t rank, ...);
 void* arealloc(void* ptr, size_t size, size_t rank, ...);
-void  afree(const void* ptr);
+void  afree(void* ptr);
 /*
  * Description:
  *

@@ -135,6 +135,19 @@ void* da_create_array( void*    data,
     }
 }
 
+/*
+ * Internal function to release the memory allocated by da_create_array 
+ */
+static 
+void* da_destroy_array(void* ptr)
+{
+    if (ptr != NULL)
+        free((char*)ptr - header_size);
+}
+
+/*
+ * Internal function to create a dimension array from a va_list
+ */
 static 
 size_t* da_create_shape( size_t   rank, 
                          va_list  arglist )
@@ -149,19 +162,85 @@ size_t* da_create_shape( size_t   rank,
 }
 
 /*
- * Internal function routine to allocate the memory with indices from a va_list
+ * Internal function to release the memory allocated by da_create_shape
  */
 static 
-void* da_vamalloc( size_t   size, 
+void* da_destroy_shape(void* ptr)
+{
+    free(ptr);
+}
+
+/*
+ * Internal function to allocate uninitialized memory for data with
+ * any required extra space for bookkeeping.
+ */
+static 
+void* da_create_data( size_t nmemb, size_t size  )
+{
+    char* data = malloc(nmemb*size + header_size);
+    if (data != NULL)
+        data += header_size;
+    return (void*)data;
+}
+
+/*
+ * Internal function to allocate zero-initialized memory for data with
+ * any required extra space for bookkeeping.
+ */
+static 
+void* da_create_clear_data( size_t nmemb, size_t size  )
+{
+    size_t chunks = (nmemb*size+header_size+mem_align_bytes-1)
+                    /mem_align_bytes;
+    char* data = calloc(chunks, mem_align_bytes);
+    if (data != NULL)
+        data += header_size;
+    return (void*)data;
+}
+
+/*
+ * Internal function to reallocate memory for data with
+ * any required extra space for bookkeeping, keeping old data values.
+ */
+static 
+void* da_recreate_data( void*  data, 
+                        size_t nmemb, 
+                        size_t size  )
+{
+    if (data != NULL) {
+        char* newdata = realloc((char*)data - header_size, 
+                                nmemb*size + header_size);
+        if (newdata != NULL)
+            newdata += header_size;
+        return (void*)newdata;
+    } else
+        return da_create_data(nmemb,size);
+}
+
+/*
+ * Internal function to release the memory allocated by
+ * da_create_data, da_recreate_data, or da_ccreate_data
+ */
+static 
+void* da_destroy_data(void* data)
+{
+    if (data!=NULL)
+        free((char*)data - header_size);
+}
+
+/*
+ * Internal function routine to allocate the memory with indices from
+ * a c array
+ */
+static 
+void* da_samalloc( size_t   size, 
                    size_t   rank, 
-                   va_list  arglist )
+                   size_t*  shape )
 {
     void*    array;
     void*    data;
-    size_t*  shape;
     size_t   i, total_elements;
 
-    shape = da_create_shape(rank, arglist);
     if (shape == NULL) 
         return NULL;
   
@@ -169,38 +248,31 @@ void* da_vamalloc( size_t   size,
     for (i = 0; i < rank; i++) 
         total_elements *= shape[i];
 
-    data = malloc(total_elements*size + header_size);
-    if (data == NULL) {
-        free(shape);
+    data = da_create_data(total_elements, size);
+    if (data == NULL) 
         return NULL;
-    }
-    data = (char*)data + header_size;
     
     array = da_create_array(data, size, rank, shape);
-    if (array == NULL) {
-        free(shape);
-        free((char*)data - header_size);
-        return NULL;
-    } else {
+    if (array == NULL)
+        da_destroy_data(data);
+    else 
         da_create_header(array, data, size, rank, shape);
-        return array;
-    }
+
+    return array;
 }
 
 /*
  * Internal function to allocate and clear memory with dimensions from a va_list
  */
 static 
-void* da_vacalloc( size_t   size, 
+void* da_sacalloc( size_t   size, 
                    size_t   rank, 
-                   va_list  arglist )
+                   size_t*  shape )
 {
     void*    array;
     void*    data;
-    size_t*  shape;
     size_t   i, total_elements;
     
-    shape = da_create_shape(rank, arglist);
     if (shape == NULL) 
         return NULL;
     
@@ -208,74 +280,60 @@ void* da_vacalloc( size_t   size,
     for (i = 0; i < rank; i++) 
         total_elements *= shape[i];
     
-    size_t chunks = (total_elements*size+header_size+mem_align_bytes-1)
-                    /mem_align_bytes;
-    data = calloc(chunks, mem_align_bytes);
-    if (data == NULL) {
-        free(shape);
+    data = da_create_clear_data(total_elements, size);
+    if (data == NULL) 
         return NULL;
-    }
-    data = (char*)data + header_size;
 
     array = da_create_array(data, size, rank, shape);
-    if (array == NULL) {
-        free(shape);
-        free((char*)data - header_size);
-        return NULL;
-    } else {
+    if (array == NULL) 
+        da_destroy_data(data);
+    else
         da_create_header(array, data, size, rank, shape);
-        return array;
-    }
+
+    return array;
 }
 
 /*
- * Internal function to reallocate (or reshape!) with dimensions from a va_list
+ * Internal function to reallocate (or reshape!) using a c array 'shape'
  */
 static 
-void* da_varealloc( void*    ptr, 
+void* da_sarealloc( void*    ptr, 
                     size_t   size, 
                     size_t   rank, 
-                    va_list  arglist )
+                    size_t*  shape )
 {
     void*      array;
+    void*      olddata;
     void*      data;
-    size_t*    shape;
     size_t     i, total_elements, oldrank;
+    size_t*    oldshape;
     header_t*  hdr;
     
-    hdr = da_get_header_address(ptr);
-    data = hdr->data;
-    shape = hdr->shape;
-    oldrank = (hdr->rank & magic_unmask);
-
-    free(shape);
-    if (oldrank > 1) 
-       free((char*)ptr - header_size);
-
-    shape = da_create_shape(rank, arglist);
     if (shape == NULL) 
         return NULL;
+
+    hdr = da_get_header_address(ptr);
+    olddata  = hdr->data;
+    oldshape = hdr->shape;
+    oldrank  = (hdr->rank & magic_unmask);
 
     total_elements = 1;
     for (i = 0; i < rank; i++) 
         total_elements *= shape[i];
 
-    data = realloc((char*)data - header_size, 
-                   total_elements*size + header_size);
-    if (data == NULL) {
-        free(shape);
+    data = da_recreate_data(olddata, total_elements, size);
+    if (data == NULL) 
         return NULL;
-    }
-    data = (char*)data + header_size;
 
     array = da_create_array(data, size, rank, shape);
     if (array == NULL) {
-        free(shape);
-        free((char*)data - header_size);
+        da_destroy_data(data);
         return NULL;
-    } 
-    else {
+    } else {
         da_create_header(array, data, size, rank, shape);
+        da_destroy_shape(oldshape);
+        if (oldrank > 1) 
+            da_destroy_array(ptr);
         return array;
     }
 }
@@ -309,11 +367,15 @@ void* da_varealloc( void*    ptr,
  */
 void* amalloc(size_t size, size_t rank, ...)
 {
-    void* result;
-    va_list arglist;
+    void*    result;
+    size_t*  shape;
+    va_list  arglist;
     va_start(arglist, rank);
-    result = da_vamalloc(size, rank, arglist);
+    shape = da_create_shape(rank, arglist);
     va_end(arglist);
+    result = da_samalloc(size, rank, shape);
+    if (result==NULL) 
+        da_destroy_shape(shape);
     return result;
 }
 
@@ -323,11 +385,15 @@ void* amalloc(size_t size, size_t rank, ...)
  */
 void* acalloc(size_t size, size_t rank, ...)
 {
-    void* result;
-    va_list arglist;
+    void*    result;
+    size_t*  shape;
+    va_list  arglist;
     va_start(arglist, rank);
-    result = da_vacalloc(size, rank, arglist);
+    shape = da_create_shape(rank, arglist);
     va_end(arglist);
+    result = da_sacalloc(size, rank, shape);
+    if (result==NULL) 
+        da_destroy_shape(shape);
     return result;
 }
 
@@ -345,10 +411,14 @@ void* acalloc(size_t size, size_t rank, ...)
 void* arealloc(void* ptr, size_t size, size_t rank, ...)
 {
     void* result;
+    size_t*  shape;
     va_list arglist;
     va_start(arglist, rank);
-    result = da_varealloc(ptr, size, rank, arglist);
+    shape = da_create_shape(rank, arglist);
     va_end(arglist);
+    result = da_sarealloc(ptr, size, rank, shape);
+    if (result==NULL) 
+        da_destroy_shape(shape);
     return result;
 }
 
@@ -356,15 +426,15 @@ void* arealloc(void* ptr, size_t size, size_t rank, ...)
  *  The 'afree' function frees up all the memory allocated for the
  *  multi-dimensional array associates with the pointer 'ptr'.
  */
-void afree(const void* ptr)
+void afree(void* ptr)
 {
     if (ptr != NULL) {
         header_t* hdr = da_get_header_address(ptr);
         if (da_is_header(hdr)) {
-            free(hdr->shape);
+            da_destroy_shape(hdr->shape);
             if (hdr->data && (hdr->rank & magic_unmask) > 1) 
-                free((char*)hdr->data - header_size);
-            free((char*)ptr - header_size);
+                da_destroy_data(hdr->data);
+            da_destroy_array(ptr);
         }
     }
 }
