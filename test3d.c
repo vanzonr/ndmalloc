@@ -66,9 +66,9 @@ int main()
     float*** a = amalloc(sizeof(float),3, n, m, l);
 
     for (i=0;i<n;i++)
-      for (j=0;j<m;j++)
-        for (k=0;k<l;k++)
-          a[i][j][k]=((i+1)*10+j+1)*10+k+1;
+        for (j=0;j<m;j++)
+            for (k=0;k<l;k++)
+                a[i][j][k]=((i+1)*10+j+1)*10+k+1;
     
     print_1(a, asize(a,0), asize(a,1), asize(a,2)); 
     print_2((void*)a, asize(a,0), asize(a,1), asize(a,2));
@@ -82,9 +82,9 @@ int main()
 
     float b[n][m][l];
     for (i=0;i<n;i++)
-      for (j=0;j<m;j++)
-        for (k=0;k<l;k++)
-          b[i][j][k]=((i+1)*10+j+1)*10+k+1;
+        for (j=0;j<m;j++)
+            for (k=0;k<l;k++)
+                b[i][j][k]=((i+1)*10+j+1)*10+k+1;
 
     return b[0][0][0];
 
