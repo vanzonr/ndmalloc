@@ -16,10 +16,14 @@
  * Mimic the regular malloc/free/calloc/realloc set for allocating and
  * deallocating memory for multi-dimensional arrays.
  */
-void* amalloc(size_t size, size_t rank, ...);
-void* acalloc(size_t size, size_t rank, ...);
-void* arealloc(void* ptr, size_t size, size_t rank, ...);
-void  afree(void* ptr);
+void* amalloc   (size_t size, size_t rank, ...);
+void* acalloc   (size_t size, size_t rank, ...);
+void* arealloc  (void* ptr, size_t size, size_t rank, ...);
+void  afree     (void* ptr);
+
+void* samalloc  (size_t size, size_t rank, const size_t* n);
+void* sacalloc  (size_t size, size_t rank, const size_t* n);
+void* sarealloc (void* ptr, size_t size, size_t rank, const size_t* n);
 /*
  * Description:
  *
@@ -38,8 +42,8 @@ void  afree(void* ptr);
  *  in the same way a c-style array is used, i.e., with repeated
  *  square bracket indexing.  If the memory allocation fails, a NULL
  *  pointer is returned.  The return value (or its casted version) can
- *  be used in calls to 'arealloc', 'afree', 'asizeof', 'adata',
- *  'arank', 'ashape', 'aknow', and 'atoda'.  This works because an
+ *  be used in calls to 'arealloc', 'afree', 'asize', 'afullsize',
+ *  'adata', 'arank', 'ashape', and 'aknown'.  This works because an
  *  internal header containing the information about the
  *  multi-dimensional structure is associated with each dynamicaly
  *  allocated multi-dimensional array.
@@ -59,18 +63,23 @@ void  afree(void* ptr);
  *  succesful, the new pointer is returned and the old one is invalid.
  *  If the function fails, NULL is returned.  Known bug: the original
  *  'ptr' is still deallocated when 'arealloc' fails.
+ *
+ *  The functions 'samalloc', 'sacalloc' and 'sarealloc' are
+ *  non-variadic variants of 'amalloc', 'acalloc' and 'arealloc',
+ *  respectively, taking instead an array of dimensions as the
+ *  argument 'n'.
  */
 
 /*
  * Functions to get information about the multi-dimensional arrays
  * allocated by amalloc, acalloc or arealloc.
  */
-int    aknown(const void* ptr);
-void*  adata(void* ptr);
-size_t arank(const void* ptr);
-size_t asize(const void* ptr, size_t dim);
-size_t afullsize(const void* ptr);
-const size_t* ashape(const void* ptr);
+      int     aknown    (const void* ptr);
+      void*   adata     (      void* ptr);
+      size_t  arank     (const void* ptr);
+      size_t  asize     (const void* ptr, size_t dim);
+      size_t  afullsize (const void* ptr);
+const size_t* ashape    (const void* ptr);
 /*
  * The function 'aknown' checks if 'ptr' is a 'known multi-dimensional
  * array', i.e., whether it was allocated using amalloc, acalloc, or

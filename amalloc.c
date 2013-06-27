@@ -260,13 +260,15 @@ void* da_destroy_data(void* data)
 }
 
 /*
- * Internal function routine to allocate the memory with indices from
- * a c array
+ * IMPLEMENTATION OF THE INTERFACE
  */
-static 
-void* da_samalloc( size_t   size, 
-                   size_t   rank, 
-                   const size_t* shape )
+
+/*
+ * Routine to allocate the memory with indices from a c array
+ */
+void* samalloc( size_t   size, 
+                size_t   rank, 
+                const size_t* shape )
 {
     size_t*  shapecopy;
     void*    array;
@@ -299,12 +301,11 @@ void* da_samalloc( size_t   size,
 }
 
 /*
- * Internal function to allocate and clear memory with dimensions from a c array
+ * Function to allocate and clear memory with dimensions from a c array
  */
-static 
-void* da_sacalloc( size_t   size, 
-                   size_t   rank, 
-                   const size_t* shape )
+void* sacalloc( size_t   size, 
+                size_t   rank, 
+                const size_t* shape )
 {
     size_t*  shapecopy;
     void*    array;
@@ -337,13 +338,12 @@ void* da_sacalloc( size_t   size,
 }
 
 /*
- * Internal function to reallocate (or reshape!) using a c array 'shape'
+ * Function to reallocate (or reshape!) using a c array 'shape'
  */
-static 
-void* da_sarealloc( void*    ptr, 
-                    size_t   size, 
-                    size_t   rank, 
-                    const size_t*  shape )
+void* sarealloc( void*    ptr, 
+                 size_t   size, 
+                 size_t   rank, 
+                 const size_t*  shape )
 {
     void*      array;
     void*      olddata;
@@ -384,12 +384,6 @@ void* da_sarealloc( void*    ptr,
     }
 }
 
-
-/*
- * IMPLEMENTATION OF THE INTERFACE
- */
-
-
 /*
  *  The 'amalloc' function creates a dynamically allocated multi-
  *  dimensional array of dimensions n[0] x n[1] ... x n['rank'-1],
@@ -419,7 +413,7 @@ void* amalloc(size_t size, size_t rank, ...)
     va_start(arglist, rank);
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
-    result = da_samalloc(size, rank, shape);
+    result = samalloc(size, rank, shape);
     da_destroy_shape(shape);
     return result;
 }
@@ -436,7 +430,7 @@ void* acalloc(size_t size, size_t rank, ...)
     va_start(arglist, rank);
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
-    result = da_sacalloc(size, rank, shape);
+    result = sacalloc(size, rank, shape);
     da_destroy_shape(shape);
     return result;
 }
@@ -460,7 +454,7 @@ void* arealloc(void* ptr, size_t size, size_t rank, ...)
     va_start(arglist, rank);
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
-    result = da_sarealloc(ptr, size, rank, shape);
+    result = sarealloc(ptr, size, rank, shape);
     da_destroy_shape(shape);
     return result;
 }
