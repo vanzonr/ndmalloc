@@ -7,7 +7,6 @@
  * Copyright (c) 2013 Ramses van Zon
  */
 
-#include "amalloc.h"
 #include <stdlib.h>
 #include <stdarg.h>
 
@@ -299,18 +298,6 @@ static void da_destroy_data(void* data)
  *  information about the multi-dimensional structure is associated
  *  with each dynamicaly allocated multi-dimensional array.
  */
-void* amalloc(size_t size, long rank, ...)
-{
-    void*    result;
-    size_t*  shape;
-    va_list  arglist;
-    va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
-    va_end(arglist);
-    result = samalloc(size, rank, shape); /* calls non-variadic function */
-    da_destroy_shape(shape);
-    return result;
-}
 /* Non-variadic version */
 void* samalloc(size_t size, long rank, const size_t* shape)
 {
@@ -343,12 +330,8 @@ void* samalloc(size_t size, long rank, const size_t* shape)
 
     return array;
 }
-
-/*
- *  The 'acalloc' function has the same functionality as amalloc, but
- *  also initialized the array to all zeros (by calling 'calloc').
- */
-void* acalloc(size_t size, long rank, ...)
+/* Variadic version */
+void* amalloc(size_t size, long rank, ...)
 {
     void*    result;
     size_t*  shape;
@@ -356,10 +339,15 @@ void* acalloc(size_t size, long rank, ...)
     va_start(arglist, rank);
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
-    result = sacalloc(size, rank, shape); /* calls non-variadic function */
+    result = samalloc(size, rank, shape); /* calls non-variadic function */
     da_destroy_shape(shape);
     return result;
 }
+
+/*
+ *  The 'acalloc' function has the same functionality as amalloc, but
+ *  also initialized the array to all zeros (by calling 'calloc').
+ */
 /* Non-variadic version */
 void* sacalloc(size_t size, long rank, const size_t* shape)
 {
@@ -392,6 +380,19 @@ void* sacalloc(size_t size, long rank, const size_t* shape)
 
     return array;
 }
+/* Variadic version */
+void* acalloc(size_t size, long rank, ...)
+{
+    void*    result;
+    size_t*  shape;
+    va_list  arglist;
+    va_start(arglist, rank);
+    shape = da_create_shape(rank, arglist);
+    va_end(arglist);
+    result = sacalloc(size, rank, shape); /* calls non-variadic function */
+    da_destroy_shape(shape);
+    return result;
+}
 
 /*
  *  The 'arealloc' function chances the dimensions and/or the size of
@@ -404,18 +405,6 @@ void* sacalloc(size_t size, long rank, const size_t* shape)
  *  If the function fails, NULL is returned.  Known bug: the original
  *  'ptr' is still deallocated when 'arealloc' fails.
  */
-void* arealloc(void* ptr, size_t size, long rank, ...)
-{
-    void* result;
-    size_t*  shape;
-    va_list arglist;
-    va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
-    va_end(arglist);
-    result = sarealloc(ptr, size, rank, shape);
-    da_destroy_shape(shape);
-    return result;
-}
 /* Non-variadic version */
 void* sarealloc(void* ptr, size_t size, long rank, const size_t* shape)
 {
@@ -431,12 +420,17 @@ void* sarealloc(void* ptr, size_t size, long rank, const size_t* shape)
     if (shape == NULL) 
         return NULL;
 
-    shapecopy = da_copy_shape(rank, shape);
-
     hdr = da_get_header_address(ptr);
+
+    /* can only reshape amalloc arrays, not pointer, not views */
+    if (hdr == NULL || ! da_is_header(hdr) || da_is_header_view(hdr) )
+      return NULL;
+
     olddata  = hdr->data;
     oldshape = hdr->shape;
     oldrank  = hdr->rank;
+
+    shapecopy = da_copy_shape(rank, shape);
 
     total_elements = da_fullsize_shape(rank, shapecopy);    
 
@@ -458,51 +452,18 @@ void* sarealloc(void* ptr, size_t size, long rank, const size_t* shape)
         return array;
     }
 }
-
-/*
- * Function 'aview' allocates a multi-dimensional view on existing data.
- */
-void* aview(void* data, size_t size, long rank, ...)
+/* Variadic version */
+void* arealloc(void* ptr, size_t size, long rank, ...)
 {
-    void*    result;
+    void* result;
     size_t*  shape;
-    va_list  arglist;
+    va_list arglist;
     va_start(arglist, rank);
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
-    result = saview(data, size, rank, shape); /* call non-variadic function */
+    result = sarealloc(ptr, size, rank, shape);
     da_destroy_shape(shape);
     return result;
-}
-/* Non-variadic version */
-void* saview(void* data, size_t size, long rank, const size_t* shape)
-{
-    size_t*  shapecopy;
-    void*    array;
-
-    if (shape == NULL || data == NULL || rank <= 1) 
-        return NULL;
-
-    shapecopy = da_copy_shape(rank, shape);  
-    if (shapecopy == NULL)
-       return NULL;
-
-    /* if data is known: */
-    if (aknown(data)) {
-        /* check that there are enough elements */
-        if (afullsize(data) < da_fullsize_shape(rank, shapecopy))
-           return NULL;
-        /* make suret we have the data, not the pointer-to-pointer */
-        data = adata(data);
-    }
-
-    array = da_create_array(data, size, rank, shapecopy);
-    if (array == NULL) 
-        da_destroy_shape(shapecopy);
-    else 
-        da_create_header_view(array, data, size, rank, shapecopy);
-
-    return array;
 }
 
 /*
@@ -622,6 +583,53 @@ int aisview(const void* ptr)
 {
     header_t* hdr = da_get_header_address(ptr);
     return da_is_header_view(hdr);
+}
+
+/*
+ * Function 'aview' allocates a multi-dimensional view on existing data.
+ */
+/* Non-variadic version */
+void* saview(void* data, size_t size, long rank, const size_t* shape)
+{
+    size_t*  shapecopy;
+    void*    array;
+
+    if (shape == NULL || data == NULL || rank <= 1) 
+        return NULL;
+
+    shapecopy = da_copy_shape(rank, shape);  
+    if (shapecopy == NULL)
+       return NULL;
+
+    /* if data is known: */
+    if (aknown(data)) {
+        /* check that there are enough elements */
+        if (afullsize(data) < da_fullsize_shape(rank, shapecopy))
+           return NULL;
+        /* make sure we have the data, not the pointer-to-pointer */
+        data = adata(data);
+    }
+
+    array = da_create_array(data, size, rank, shapecopy);
+    if (array == NULL) 
+        da_destroy_shape(shapecopy);
+    else 
+        da_create_header_view(array, data, size, rank, shapecopy);
+
+    return array;
+}
+/* Variadic version */
+void* aview(void* data, size_t size, long rank, ...)
+{
+    void*    result;
+    size_t*  shape;
+    va_list  arglist;
+    va_start(arglist, rank);
+    shape = da_create_shape(rank, arglist);
+    va_end(arglist);
+    result = saview(data, size, rank, shape); /* call non-variadic function */
+    da_destroy_shape(shape);
+    return result;
 }
 
 /* end of file amalloc.c */

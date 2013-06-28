@@ -17,7 +17,7 @@
 int main(int argc, char**argv) 
 {
     Stopwatch s;
-    double answer = 0.0;
+    double answer = 0.0, check, eps;
     int thiscase  = (argc<=1)?1:atoi(argv[1]);
     int repeat    = (argc<=2)?9:atoi(argv[2]);
 
@@ -51,15 +51,13 @@ int main(int argc, char**argv)
         break;
     }
 
-    double check = case_exact(1)+case_exact(repeat-1);
-    double eps = 1e-6;
+    check = case_exact(1)+case_exact(repeat-1);
+    eps = 1e-6;
 
     if ((1-answer/check)>eps ||
         (1-answer/check)<-eps)
-        printf("%lf does not match exact result of %lf\n", 
+        printf("%f does not match exact result of %f\n", 
                answer/n/n, check/n/n);
-    // else
-    //     printf("%lf matches exact result!\n", answer/n/n);
     return 0;
 }
 

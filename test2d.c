@@ -38,6 +38,7 @@ int main()
 {
     const int n = 9;
     const int m = 5;
+    float *a1;
     float** a = amalloc(sizeof(float),2,n,m);
     int i, j;
 
@@ -45,8 +46,6 @@ int main()
         for (j=0;j<m;j++)
             a[i][j]=(i+1)*10+j+1;
     
-    float* a1 = a[1];
-
     print_1(a, asize(a,0), asize(a,1));
     print_2((void*)a, asize(a,0), asize(a,1));
     print_3((void*)a, asize(a,0), asize(a,1));
@@ -56,6 +55,7 @@ int main()
     print_7(a);
 
     afree(a);
+    return a1[0];
 }
 
 /************************************************/

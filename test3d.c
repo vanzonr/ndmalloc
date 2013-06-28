@@ -57,17 +57,19 @@ void print_7(float*** a);
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 
+#define N 9
+#define M 5
+#define L 2
+
 int main() 
 {
-    const int n = 9;
-    const int m = 5;
-    const int l = 2;
+    float b[N][M][L];
     int i,j,k;
-    float*** a = amalloc(sizeof(float),3, n, m, l);
+    float*** a = amalloc(sizeof(float),3, N, M, L);
 
-    for (i=0;i<n;i++)
-        for (j=0;j<m;j++)
-            for (k=0;k<l;k++)
+    for (i=0;i<N;i++)
+        for (j=0;j<M;j++)
+            for (k=0;k<L;k++)
                 a[i][j][k]=((i+1)*10+j+1)*10+k+1;
     
     print_1(a, asize(a,0), asize(a,1), asize(a,2)); 
@@ -80,10 +82,9 @@ int main()
 
     afree(a);
 
-    float b[n][m][l];
-    for (i=0;i<n;i++)
-        for (j=0;j<m;j++)
-            for (k=0;k<l;k++)
+    for (i=0;i<N;i++)
+        for (j=0;j<M;j++)
+            for (k=0;k<L;k++)
                 b[i][j][k]=((i+1)*10+j+1)*10+k+1;
 
     return b[0][0][0];
