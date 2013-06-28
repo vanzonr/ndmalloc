@@ -45,8 +45,6 @@ int main()
         for (j=0;j<m;j++)
             a[i][j]=(i+1)*10+j+1;
     
-    float* a1 = a[1];
-
     print_1(a, asize(a,0), asize(a,1));
     print_2((void*)a, asize(a,0), asize(a,1));
     print_3((void*)a, asize(a,0), asize(a,1));
@@ -55,7 +53,11 @@ int main()
     print_6(acdata(a), asize(a,0), asize(a,1));
     print_7(a);
 
-    afree(a);
+    float* a1 = arealloc(a, sizeof(float), 1, n*m);
+    print_5(adata(a1), 1, asize(a1,0));
+
+
+    afree(a1);
 }
 
 /************************************************/
