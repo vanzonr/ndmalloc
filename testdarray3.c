@@ -3,18 +3,18 @@
 #include <assert.h>
 #include "amalloc.h"
 
-void fill(double** array)
+void fill(float** array)
 {
     assert( aknown(array) );
     assert( arank(array) == 2 );
     const size_t* shape = ashape(array);
-    double* data = adata(array);
+    float* data = adata(array);
     int i;
     for (i = 0; i < shape[0]*shape[1]; i++)
         data[i] = i+1;
 }
 
-void print(double** array)
+void print(float** array)
 {
     assert( aknown(array) );
     const size_t* shape = ashape(array);
@@ -28,20 +28,20 @@ void print(double** array)
 
 int main()
 {
-    double** a = amalloc(sizeof(double), 2, 4, 4);
+    float** a = amalloc(sizeof(float), 2, 4, 4);
     fill(a);
     print(a);
-    double** b = arealloc(a, sizeof(double), 2, 9, 2);
+    float** b = arealloc(a, sizeof(float), 2, 9, 2);
     print(b);
-    double** c = aview(b, sizeof(double), 2, 3, 6);
+    float** c = aview(b, sizeof(float), 2, 3, 6);
     print(c);
     afree(b); // not a!
     afree(c); // although it is a view, must deallocate
 
-    double d[3][4] = { {11,12,13,14},
-                       {15,16,17,18},
-                       {19,20,21,22} };
-    double** e = aview(d, sizeof(double), 2, 3, 4);
+    float d[3][5] = { {11,12,13,14,1},
+                      {15,16,17,18,2},
+                      {19,20,21,22,3} };
+    float** e = autoview2(d);
     print(e);
     afree(e);
 

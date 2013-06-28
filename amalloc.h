@@ -124,6 +124,20 @@ const size_t* ashape    (const void* ptr);
  * array, or NULL if 'ptr' is not a known multi-dimensional array.
  */
 
+
+/*
+ * Macros to turn automatic arrays into multi-dimensional views 
+*/
+#define autoview0(a) aview(a,sizeof(a),0))
+#define autoview1(a) aview(a,sizeof(*(a)),1,sizeof(a)/sizeof(*(a)))
+#define autoview2(a) aview(a,sizeof(**(a)),2,sizeof(a)/sizeof(*(a)),sizeof(*(a))/sizeof(**(a)))
+#define autoview3(a) aview(a,sizeof(***(a)),3,sizeof(a)/sizeof(*(a)),sizeof(*(a))/sizeof(**(a)),sizeof(**(a))/sizeof(***(a)))
+#define autoview4(a) aview(a,sizeof(****(a)),4,sizeof(a)/sizeof(*(a)),sizeof(*(a))/sizeof(**(a)),sizeof(**(a))/sizeof(***(a)),sizeof(***(a))/sizeof(****(a)))
+#define autoview5(a) aview(a,sizeof(*****(a)),5,sizeof(a)/sizeof(*(a)),sizeof(*(a))/sizeof(**(a)),sizeof(**(a))/sizeof(***(a)),sizeof(***(a))/sizeof(****(a)),sizeof(****(a))/sizeof(*****(a)))
+#define autoview6(a) aview(a,sizeof(******(a)),6,sizeof(*(a))/sizeof(**(a)),sizeof(**(a))/sizeof(***(a)),sizeof(***(a))/sizeof(****(a)),sizeof(****(a))/sizeof(*****(a)),sizeof(*****(a))/sizeof(******(a)))
+#define autoview7(a) aview(a,sizeof(*******(a)),7,sizeof(**(a))/sizeof(***(a)),sizeof(***(a))/sizeof(****(a)),sizeof(****(a))/sizeof(*****(a)),sizeof(*****(a))/sizeof(******(a)),sizeof(******(a))/sizeof(*******(a)))
+#define autoview8(a) aview(a,sizeof(********(a)),8,sizeof(***(a))/sizeof(****(a)),sizeof(****(a))/sizeof(*****(a)),sizeof(*****(a))/sizeof(******(a)),sizeof(******(a))/sizeof(*******(a)),sizeof(*******(a))/sizeof(********(a)))
+
 #endif
 
 /* end of file amalloc.h */
