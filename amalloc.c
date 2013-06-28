@@ -31,8 +31,8 @@ typedef struct {
 /* 
  * Define the magic mark to be embedded in the header_t
  */
-static long magic_mark      = 0x19720616;
-static long view_magic_mark = 0x19720617;
+static long magic_mark      = 0x19720616;  /* in headers of allocated arrays */
+static long view_magic_mark = 0x19720617;  /* in headers of views on arrays  */
 
 /* 
  * Define an alignment policy, such that the headers and the actual
@@ -56,23 +56,26 @@ static long view_magic_mark = 0x19720617;
  * Internal function to get the hidden header given the
  * pointer-to-pointer array
  */
-static 
-header_t* da_get_header_address(const void* array)
+static header_t* da_get_header_address(const void* array)
 {    
     return array==NULL?0:((header_t*)((char*)array - header_size));
 }
 
 /*
- * Internal function to check that a given header has the correct magic mark
+ * Internal function to check that a given header is for a dynamically
+ * allocated array or a multi-dimensional view.
  */
-static 
-int da_is_header(const header_t* hdr)
+static int da_is_header(const header_t* hdr)
 {
     return (hdr != NULL) && 
       ( hdr->magic == magic_mark || hdr->magic == view_magic_mark ); 
 }
-static 
-int da_is_header_view(const header_t* hdr)
+
+/*
+ * Internal function to check that a given header is for a multi-dimensional
+ * view.
+ */
+static int da_is_header_view(const header_t* hdr)
 {
     return (hdr != NULL) && ( hdr->magic == view_magic_mark ); 
 }
@@ -80,12 +83,11 @@ int da_is_header_view(const header_t* hdr)
 /*
  * Internal functions to prepend the dynamic pointer with a header 
  */
-static 
-void da_create_header( void*    array,
-                       void*    data,
-                       size_t   size,
-                       size_t   rank,
-                       size_t*  shape )
+static void da_create_header( void*    array,
+                              void*    data,
+                              size_t   size,
+                              long     rank,
+                              size_t*  shape )
 {  
     header_t* hdr = da_get_header_address(array);
     hdr->data  = data;
@@ -94,13 +96,15 @@ void da_create_header( void*    array,
     hdr->magic = magic_mark;
     hdr->shape = shape;
 }
-/* */
-static 
-void da_create_header_view( void*    array,
-                            void*    data,
-                            size_t   size,
-                            size_t   rank,
-                            size_t*  shape )
+
+/*
+ * Internal functions to prepend the dynamic pointer with a header for a view
+ */
+static void da_create_header_view( void*    array,
+                                   void*    data,
+                                   size_t   size,
+                                   long     rank,
+                                   size_t*  shape )
 {  
     header_t* hdr = da_get_header_address(array);
     hdr->data  = data;
@@ -113,8 +117,7 @@ void da_create_header_view( void*    array,
 /*
  * Internal function to create the pointer-to-pointer structure for any rank 
  */
-static 
-void* da_create_array(void* data, size_t size, size_t rank, size_t*  shape)
+static void* da_create_array(void* data, size_t size, long rank, size_t* shape)
 {
     if (rank <= 1) 
 
@@ -122,7 +125,8 @@ void* da_create_array(void* data, size_t size, size_t rank, size_t*  shape)
        
     else {
         
-        size_t  i, j, ntot;
+        long    i;
+        size_t  j, ntot;
         size_t  nalloc;    
         char**  palloc;
         char**  result;
@@ -156,8 +160,7 @@ void* da_create_array(void* data, size_t size, size_t rank, size_t*  shape)
 /*
  * Internal function to release the memory allocated by da_create_array 
  */
-static 
-void da_destroy_array(void* ptr)
+static void da_destroy_array(void* ptr)
 {
     if (ptr != NULL)
         free((char*)ptr - header_size);
@@ -166,12 +169,11 @@ void da_destroy_array(void* ptr)
 /*
  * Internal function to create a dimension array from a va_list
  */
-static 
-size_t* da_create_shape(size_t rank, va_list arglist)
+static size_t* da_create_shape(long rank, va_list arglist)
 {
     size_t* shape = malloc(sizeof(size_t)*rank);    
     if (shape != NULL) {
-        int i;
+        long i;
         for (i = 0; i < rank; i++) 
             shape[i] = va_arg(arglist, size_t);
     }
@@ -181,14 +183,13 @@ size_t* da_create_shape(size_t rank, va_list arglist)
 /*
  * Internal function to copy a dimension array
  */
-static 
-size_t* da_copy_shape(size_t rank, const size_t* from)
+static size_t* da_copy_shape(long rank, const size_t* from)
 {
     size_t* shape = NULL;
     if (from != NULL) {
         shape = malloc(sizeof(size_t)*rank);    
         if (shape != NULL) {
-            int i;
+            long i;
             for (i = 0; i < rank; i++) { 
                 shape[i] = from[i];
             }
@@ -200,8 +201,7 @@ size_t* da_copy_shape(size_t rank, const size_t* from)
 /*
  * Internal function to release the memory allocated by da_create_shape
  */
-static 
-void da_destroy_shape(size_t* ptr)
+static void da_destroy_shape(size_t* ptr)
 {
     free(ptr);
 }
@@ -209,10 +209,10 @@ void da_destroy_shape(size_t* ptr)
 /*
  * Internal function to determine total number of elements in a shape
  */
-static 
-size_t da_fullsize_shape(size_t rank, size_t* ptr)
+static size_t da_fullsize_shape(long rank, size_t* ptr)
 {
-    size_t fullsize, i;
+    size_t fullsize;
+    long i;
     if (ptr == NULL) 
         return 0;
     fullsize = 1;
@@ -238,8 +238,7 @@ void* da_create_data(size_t nmemb, size_t size)
  * Internal function to allocate zero-initialized memory for data with
  * any required extra space for bookkeeping.
  */
-static 
-void* da_create_clear_data(size_t nmemb, size_t size)
+static void* da_create_clear_data(size_t nmemb, size_t size)
 {
     size_t chunks = (nmemb*size+header_size+mem_align_bytes-1)
                     /mem_align_bytes;
@@ -253,8 +252,7 @@ void* da_create_clear_data(size_t nmemb, size_t size)
  * Internal function to reallocate memory for data with
  * any required extra space for bookkeeping, keeping old data values.
  */
-static 
-void* da_recreate_data(void* data, size_t nmemb, size_t size)
+static void* da_recreate_data(void* data, size_t nmemb, size_t size)
 {
     if (data != NULL) {
         char* newdata = realloc((char*)data - header_size, 
@@ -270,8 +268,7 @@ void* da_recreate_data(void* data, size_t nmemb, size_t size)
  * Internal function to release the memory allocated by
  * da_create_data, da_recreate_data, or da_ccreate_data
  */
-static 
-void da_destroy_data(void* data)
+static void da_destroy_data(void* data)
 {
     if (data!=NULL)
         free((char*)data - header_size);
@@ -302,7 +299,7 @@ void da_destroy_data(void* data)
  *  information about the multi-dimensional structure is associated
  *  with each dynamicaly allocated multi-dimensional array.
  */
-void* amalloc(size_t size, size_t rank, ...)
+void* amalloc(size_t size, long rank, ...)
 {
     void*    result;
     size_t*  shape;
@@ -315,7 +312,7 @@ void* amalloc(size_t size, size_t rank, ...)
     return result;
 }
 /* Non-variadic version */
-void* samalloc(size_t size, size_t rank, const size_t* shape)
+void* samalloc(size_t size, long rank, const size_t* shape)
 {
     size_t*  shapecopy;
     void*    array;
@@ -351,7 +348,7 @@ void* samalloc(size_t size, size_t rank, const size_t* shape)
  *  The 'acalloc' function has the same functionality as amalloc, but
  *  also initialized the array to all zeros (by calling 'calloc').
  */
-void* acalloc(size_t size, size_t rank, ...)
+void* acalloc(size_t size, long rank, ...)
 {
     void*    result;
     size_t*  shape;
@@ -364,7 +361,7 @@ void* acalloc(size_t size, size_t rank, ...)
     return result;
 }
 /* Non-variadic version */
-void* sacalloc(size_t size, size_t rank, const size_t* shape)
+void* sacalloc(size_t size, long rank, const size_t* shape)
 {
     size_t*  shapecopy;
     void*    array;
@@ -407,7 +404,7 @@ void* sacalloc(size_t size, size_t rank, const size_t* shape)
  *  If the function fails, NULL is returned.  Known bug: the original
  *  'ptr' is still deallocated when 'arealloc' fails.
  */
-void* arealloc(void* ptr, size_t size, size_t rank, ...)
+void* arealloc(void* ptr, size_t size, long rank, ...)
 {
     void* result;
     size_t*  shape;
@@ -420,13 +417,13 @@ void* arealloc(void* ptr, size_t size, size_t rank, ...)
     return result;
 }
 /* Non-variadic version */
-void* sarealloc(void* ptr, size_t size, size_t rank, const size_t* shape)
+void* sarealloc(void* ptr, size_t size, long rank, const size_t* shape)
 {
     void*      array;
     void*      olddata;
     void*      data;
     size_t     total_elements;
-    size_t     oldrank;
+    long       oldrank;
     size_t*    oldshape;
     size_t*    shapecopy;
     header_t*  hdr;
@@ -465,7 +462,7 @@ void* sarealloc(void* ptr, size_t size, size_t rank, const size_t* shape)
 /*
  * Function 'aview' allocates a multi-dimensional view on existing data.
  */
-void* aview(void* data, size_t size, size_t rank, ...)
+void* aview(void* data, size_t size, long rank, ...)
 {
     void*    result;
     size_t*  shape;
@@ -478,7 +475,7 @@ void* aview(void* data, size_t size, size_t rank, ...)
     return result;
 }
 /* Non-variadic version */
-void* saview(void* data, size_t size, size_t rank, const size_t* shape)
+void* saview(void* data, size_t size, long rank, const size_t* shape)
 {
     size_t*  shapecopy;
     void*    array;
@@ -531,7 +528,7 @@ void afree(void* ptr)
  * about the multi-dimensional structure is associated with each
  * dynamicaly allocated multi-dimensional array.
  */
-size_t asize(const void* ptr, size_t dim)
+size_t asize(const void* ptr, long dim)
 {
     header_t* hdr = da_get_header_address(ptr);
     if (da_is_header(hdr)) {
@@ -572,7 +569,7 @@ const void* acdata(const void* ptr)
  * if 'ptr' was not created with (s)amalloc, (s)acalloc, (s)arealloc
  * or (s)aview.
  */
-size_t arank(const void* ptr)
+long arank(const void* ptr)
 {
     const header_t* hdr = da_get_header_address(ptr);
     if (da_is_header(hdr))
