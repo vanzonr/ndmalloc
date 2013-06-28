@@ -37,5 +37,13 @@ int main()
     print(c);
     afree(b); // not a!
     afree(c); // although it is a view, must deallocate
+
+    double d[3][4] = { {11,12,13,14},
+                       {15,16,17,18},
+                       {19,20,21,22} };
+    double** e = aview(d, sizeof(double), 2, 3, 4);
+    print(e);
+    afree(e);
+
     return 0;
 }
