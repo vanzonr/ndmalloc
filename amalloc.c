@@ -31,7 +31,8 @@ typedef struct {
 /* 
  * Define the magic mark to be embedded in the header_t
  */
-static long magic_mark = 0x19720616;
+static long magic_mark      = 0x19720616;
+static long view_magic_mark = 0x19720617;
 
 /* 
  * Define an alignment policy, such that the headers and the actual
@@ -67,11 +68,17 @@ header_t* da_get_header_address(const void* array)
 static 
 int da_is_header(const header_t* hdr)
 {
-    return (hdr != NULL) && ( hdr->magic == magic_mark ); 
+    return (hdr != NULL) && 
+      ( hdr->magic == magic_mark || hdr->magic == view_magic_mark ); 
+}
+static 
+int da_is_header_view(const header_t* hdr)
+{
+    return (hdr != NULL) && ( hdr->magic == view_magic_mark ); 
 }
 
 /*
- * Internal function to prepend the dynamic pointer with a header 
+ * Internal functions to prepend the dynamic pointer with a header 
  */
 static 
 void da_create_header( void*    array,
@@ -85,6 +92,21 @@ void da_create_header( void*    array,
     hdr->size  = size;
     hdr->rank  = rank;
     hdr->magic = magic_mark;
+    hdr->shape = shape;
+}
+/* */
+static 
+void da_create_header_view( void*    array,
+                            void*    data,
+                            size_t   size,
+                            size_t   rank,
+                            size_t*  shape )
+{  
+    header_t* hdr = da_get_header_address(array);
+    hdr->data  = data;
+    hdr->size  = size;
+    hdr->rank  = rank;
+    hdr->magic = view_magic_mark;
     hdr->shape = shape;
 }
 
@@ -441,6 +463,48 @@ void* sarealloc(void* ptr, size_t size, size_t rank, const size_t* shape)
 }
 
 /*
+ * Function 'aview' allocates a multi-dimensional view on existing data.
+ */
+void* aview(void* data, size_t size, size_t rank, ...)
+{
+    void*    result;
+    size_t*  shape;
+    va_list  arglist;
+    va_start(arglist, rank);
+    shape = da_create_shape(rank, arglist);
+    va_end(arglist);
+    result = saview(data, size, rank, shape); /* call non-variadic function */
+    da_destroy_shape(shape);
+    return result;
+}
+/* Non-variadic version */
+void* saview(void* data, size_t size, size_t rank, const size_t* shape)
+{
+    size_t*  shapecopy;
+    void*    array;
+
+    if (shape == NULL || data == NULL || rank <= 1) 
+        return NULL;
+
+    shapecopy = da_copy_shape(rank, shape);  
+    if (shapecopy == NULL)
+       return NULL;
+
+    /* if data is known, check that there are enough elements */
+    if (aknown(data) &&
+        afullsize(data) < da_fullsize_shape(rank, shapecopy))
+        return NULL;
+
+    array = da_create_array(data, size, rank, shapecopy);
+    if (array == NULL) 
+        da_destroy_shape(shapecopy);
+    else 
+        da_create_header_view(array, data, size, rank, shapecopy);
+
+    return array;
+}
+
+/*
  *  The 'afree' function frees up all the memory allocated for the
  *  multi-dimensional array associates with the pointer 'ptr'.
  */
@@ -450,7 +514,7 @@ void afree(void* ptr)
         header_t* hdr = da_get_header_address(ptr);
         if (da_is_header(hdr)) {
             da_destroy_shape(hdr->shape);
-            if (hdr->data && hdr->rank > 1) 
+            if (hdr->data && hdr->rank > 1 && ! da_is_header_view(hdr) ) 
                 da_destroy_data(hdr->data);
             da_destroy_array(ptr);
         }
@@ -477,10 +541,8 @@ size_t asize(const void* ptr, size_t dim)
 
 /*
  * Function to get the start of the data (useful for library calls).
- * This works because an internal header containing the information
- * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.  Returns NULL if
- * 'ptr' was not allocated with amalloc, acalloc, or arealloc.
+ * Returns NULL if 'ptr' was not created with (s)amalloc, (s)acalloc,
+ * (s)arealloc, or (s)aview.
  */
 void* adata(void* ptr)
 {
@@ -490,6 +552,8 @@ void* adata(void* ptr)
     else
         return NULL;
 }
+
+/* const version */
 const void* acdata(const void* ptr)
 {
     const header_t* hdr = da_get_header_address(ptr);
@@ -500,11 +564,9 @@ const void* acdata(const void* ptr)
 }
 
 /*
- * Function to get the rank of the multi-dimensional array.
- * This works because an internal header containing the information
- * about the multi-dimensional structure is associated with each
- * dynamicaly allocated multi-dimensional array.  Returns 0 if
- * 'ptr' was not allocated with amalloc, acalloc, or arealloc.
+ * Function to get the rank of the multi-dimensional array.  Returns 0
+ * if 'ptr' was not created with (s)amalloc, (s)acalloc, (s)arealloc
+ * or (s)aview.
  */
 size_t arank(const void* ptr)
 {
@@ -516,11 +578,8 @@ size_t arank(const void* ptr)
 }
 
 /*
- * Function to get the shape of the multi-dimensional array.  This
- * works because an internal header containing the information about
- * the multi-dimensional structure is associated with each dynamicaly
- * allocated multi-dimensional array. Returns NULL if no dynamic array
- * is associated with 'ptr'.
+ * Function to get the shape of the multi-dimensional array.  Returns
+ * NULL if no dynamic array is associated with 'ptr'.
  */
 const size_t* ashape(const void* ptr)
 {
@@ -532,11 +591,9 @@ const size_t* ashape(const void* ptr)
 }
 
 /*
- * Function to get the total number of elements in the multi-dimensional  
- * array. This works because an internal header containing the information about
- * about the multi-dimensional structure is associated with each dynamicaly
- * allocated multi-dimensional array. Returns 0 if no dynamic array
- * is associated with 'ptr'.
+ * Function to get the total number of elements in the
+ * multi-dimensional array.  Returns 0 if no dynamic array is
+ * associated with 'ptr'.
  */
 size_t afullsize(const void* ptr)
 {
@@ -548,15 +605,22 @@ size_t afullsize(const void* ptr)
 }
 
 /* 
- * Function to check if 'ptr's is an array allocated with amalloc,
- * acalloc, or arealloc.  This works because an internal header
- * containing the information about the multi-dimensional structure is
- * associated with each dynamicaly allocated multi-dimensional array.
+ * Function to check if 'ptr's is an array allocated with (s)amalloc,
+ * (s)acalloc, (s)arealloc, or (s)aview.
  */
 int aknown(const void* ptr)
 {
     header_t* hdr = da_get_header_address(ptr);
     return da_is_header(hdr);
+}
+
+/* 
+ * Function to check if 'ptr's is an array created with (s)aview.
+ */
+int aisview(const void* ptr)
+{
+    header_t* hdr = da_get_header_address(ptr);
+    return da_is_header_view(hdr);
 }
 
 /* end of file amalloc.c */

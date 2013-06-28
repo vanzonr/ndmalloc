@@ -19,11 +19,14 @@
 void* amalloc   (size_t size, size_t rank, ...);
 void* acalloc   (size_t size, size_t rank, ...);
 void* arealloc  (void* ptr, size_t size, size_t rank, ...);
+void* aview     (void* data, size_t size, size_t rank, ...); 
 void  afree     (void* ptr);
 
 void* samalloc  (size_t size, size_t rank, const size_t* n);
 void* sacalloc  (size_t size, size_t rank, const size_t* n);
 void* sarealloc (void* ptr, size_t size, size_t rank, const size_t* n);
+void* saview    (void* data, size_t size, size_t rank, const size_t* n); 
+
 /*
  * Description:
  *
@@ -51,6 +54,13 @@ void* sarealloc (void* ptr, size_t size, size_t rank, const size_t* n);
  *  The 'afree' function frees up all the memory allocated for the
  *  multi-dimensional array associates with the pointer 'ptr'.
  *
+ *  The 'aview' function is similar to malloc but only allocates the
+ *  pointer-to pointer array, while the elements of the array should
+ *  be a contiguous block pointed to by 'data'. 'rank' must be larger
+ *  than one for a view to work.  'data' is allowed to point to the
+ *  memory of another dynamically allocated array.  The pointer
+ *  returned by 'aview' has to be freed with 'afree'.
+ *
  *  The 'acalloc' function has the same functionality as 'amalloc',
  *  but also initializes the array to all zeros (by calling 'calloc').
  * 
@@ -75,6 +85,7 @@ void* sarealloc (void* ptr, size_t size, size_t rank, const size_t* n);
  * allocated by amalloc, acalloc or arealloc.
  */
       int     aknown    (const void* ptr);
+      int     aisview   (const void* ptr);
       size_t  arank     (const void* ptr);
       size_t  asize     (const void* ptr, size_t dim);
       size_t  afullsize (const void* ptr);
@@ -84,8 +95,13 @@ const size_t* ashape    (const void* ptr);
 /*
  * The function 'aknown' checks if 'ptr' is a 'known multi-dimensional
  * array', i.e., whether it was allocated using amalloc, acalloc, or
- * arealloc.  The return value is 1 if 'ptr' was successfully
- * allocated with amalloc, acalloc or arealloc, and 0 if it was not.
+ * arealloc.  The return value is 1 if 'ptr' was successfully created
+ * with amalloc, acalloc, arealloc, or aview (or their non-variadic
+ * versions samalloc, sacalloc, sarealloc and saview), and 0 if it was
+ * not.
+ *
+ * The function 'ais view' checks if 'ptr' is a 'known
+ * multi-dimensional array view created with 'aview' or 'saview'.
  *
  * The function 'arank' * returns the rank of multi-dimensional array
  * 'ptr', or zero if 'ptr' is not a known multi-dimensional array.
