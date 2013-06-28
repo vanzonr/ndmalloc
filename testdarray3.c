@@ -33,6 +33,9 @@ int main()
     print(a);
     double** b = arealloc(a, sizeof(double), 2, 9, 2);
     print(b);
+    double** c = aview(b, sizeof(double), 2, 3, 6);
+    print(c);
     afree(b); // not a!
+    afree(c); // although it is a view, must deallocate
     return 0;
 }

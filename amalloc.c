@@ -490,10 +490,14 @@ void* saview(void* data, size_t size, size_t rank, const size_t* shape)
     if (shapecopy == NULL)
        return NULL;
 
-    /* if data is known, check that there are enough elements */
-    if (aknown(data) &&
-        afullsize(data) < da_fullsize_shape(rank, shapecopy))
-        return NULL;
+    /* if data is known: */
+    if (aknown(data)) {
+        /* check that there are enough elements */
+        if (afullsize(data) < da_fullsize_shape(rank, shapecopy))
+           return NULL;
+        /* make suret we have the data, not the pointer-to-pointer */
+        data = adata(data);
+    }
 
     array = da_create_array(data, size, rank, shapecopy);
     if (array == NULL) 
