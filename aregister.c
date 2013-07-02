@@ -8,7 +8,9 @@
 /**********************************************************************/
 
 #include <pthread.h>    /* for thread locks */
-#include <string.h>     /* for memmove */
+#include <string.h>     /* for memmove and memcpy */
+#include <stdlib.h>     /* for malloc and realloc */
+#include "aregister.h"
 
 /**********************************************************************/
 
@@ -33,10 +35,13 @@ static pthread_mutex_t  mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* keyval's should be in a B-tree. For now, use a fixed size array. */
 
-#define nregmax 512
+#define nregmaxinit 512
+#define nreginc     512
 
-static long             nreg  = 0;
-static struct keyval    reg[nregmax];
+static size_t          nregmax = nregmaxinit;
+static size_t          nreg  = 0;
+static struct keyval   reginit[nregmaxinit];
+static struct keyval*  reg = reginit;
 
 /**********************************************************************/
 
@@ -69,6 +74,7 @@ int internal_areg_find(const void* key, clue_t clue, size_t* index)
     if (index == NULL) {
         return AREG_FAILURE;
     }
+
     if (start == NOCLUE) {
         start = 0;
     }
@@ -110,37 +116,65 @@ int areg_add(const void* key, void* val, clue_t* clue)
     size_t   index  = 0;
     int      exitcode = AREG_FAILURE;
     int      notpresent;
+    struct keyval* newreg;
     
+
     if (key == NULL || val == NULL) {
         return AREG_FAILURE;
     }
 
     pthread_mutex_lock(&mutex);
 
-    if (nreg<nregmax) {
-        /* find the ordered spot (gets put in index) */
-        notpresent = ( internal_areg_find(key, NOCLUE, &index) 
-                       == AREG_FAILURE ); /* must not be found */
-        if (notpresent) {
-            /* index given nu internal_areg_find holds insertion point */
-            /* clear the spot */
-            if (index<nreg) 
-                memmove(reg+index+1, 
-                        reg+index, 
-                        (nreg-index)*sizeof(struct keyval));
-            nreg++;
-            /* put it there */
-            reg[index].key=key;
-            reg[index].val=val;
-            exitcode = AREG_SUCCESS;
+    /* check if we need to augment the registry */
+    if (nreg == nregmax) { 
+
+        
+        if (nregmax == nregmaxinit) {
+
+            newreg = malloc((nregmaxinit+nreginc)*sizeof(struct keyval));
+            if (newreg)
+                memcpy(newreg, reg, nregmaxinit*sizeof(struct keyval));
+
+        } else {           
+
+            newreg = realloc(reg, (nregmax+nreginc)*sizeof(struct keyval));
+
         }
-    } 
+
+        if (newreg == NULL) {                
+            pthread_mutex_unlock(&mutex);
+            return AREG_ERROR;
+        }
+
+        fprintf(stderr, "Yeah!");
+        reg = newreg;
+        nregmax += nreginc;
+    }
+
+    /* find the ordered spot (gets put in index) */
+    notpresent = ( internal_areg_find(key, NOCLUE, &index) 
+                   == AREG_FAILURE ); /* must not be found */
+    if (notpresent) {
+        /* index given nu internal_areg_find holds insertion point */
+        /* clear the spot */
+        if (index<nreg) 
+            memmove(reg+index+1, 
+                    reg+index, 
+                    (nreg-index)*sizeof(struct keyval));
+        nreg++;
+        /* put it there */
+        reg[index].key=key;
+        reg[index].val=val;
+        exitcode = AREG_SUCCESS;
+    }
+
 
     if (clue != NULL) {
-        if (exitcode != AREG_SUCCESS)
+        if (exitcode != AREG_SUCCESS) {
             *clue = NOCLUE;
-        else
+        } else {
             *clue = index;
+        }
     }
 
     pthread_mutex_unlock(&mutex);
@@ -153,7 +187,7 @@ int areg_remove(const void* key, clue_t clue)
 {
  /* Remove the key-value pair associated with 'key'.  Pass in a clue
     that was given by areg_add() for faster lookup.  Returns 0 if pair is
-    removed and 1 if 'key' is was not found. */
+    removed and 1 if 'key' was not found. */
 
     int     exitcode;
     size_t  index;
@@ -166,6 +200,18 @@ int areg_remove(const void* key, clue_t clue)
             memmove(reg+index, reg+index+1, 
                     (nreg-index-1)*sizeof(struct keyval));
         nreg--;
+    }
+    
+    /* check if we can shrink the registry ?*/
+    if (nregmax > nregmaxinit+nreginc // don't shrink to original buffer for now
+        && nreg < nregmax-nreginc)    // must not need the room
+    {
+        size_t newnregmax = nregmax-nreginc; 
+        struct keyval* newreg = realloc(reg, newnregmax*sizeof(struct keyval));
+        if (newreg != NULL) {
+            nregmax = newnregmax;
+            reg = newreg;
+        }
     }
 
     pthread_mutex_unlock(&mutex);
@@ -185,7 +231,7 @@ int areg_lookup(const void* key, clue_t clue, void** value)
 
     if ( key == NULL || value == NULL ) {
         if (value != NULL) {
-            *value == NULL;
+            *value = NULL;
         }
         return AREG_FAILURE;
     }
@@ -210,8 +256,9 @@ int areg_lookup(const void* key, clue_t clue, void** value)
 
 int main()
 {
+    int i;
     int  a=1;
-    int  b=2;
+    int  b=123;
     int  c=3;
     int  d=4;
     int* pa = &a;
@@ -219,12 +266,16 @@ int main()
     int* pc = &c;
     int* pd = &d;
     int* p;
+    clue_t cluea;
+    clue_t clueb;
+    clue_t cluec;
+    clue_t clued;
+    void* result;
 
     ABC();
-    clue_t cluea;
+
     AREG_CHECK(  areg_add(pa, pb, &cluea)  );
     ABC();
-    clue_t cluec;
     AREG_CHECK(  areg_add(pc, pd, &cluec)  );
     ABC();
 
@@ -232,11 +283,18 @@ int main()
     AREG_CHECK(  areg_remove(pc, NOCLUE)  );
     ABC();
     
-    void* result;
-    AREG_CHECK(  areg_lookup(pa, cluea, &result)  );
-    p = result;
+    for (i=0;i<1024;i++) {
+        int* a=malloc(sizeof(int));        
+        int* b=malloc(sizeof(int));
+        *a=i; *b=1000+i;
+        clue_t clue;
+        AREG_CHECK(  areg_add(a,b,&clue)  );
+    }
 
     ABC();
+
+    AREG_CHECK(  areg_lookup(pa, cluea, &result)  );
+    p = result;
 
     return p?*p:cluec*0;
 }
