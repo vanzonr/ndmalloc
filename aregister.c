@@ -7,31 +7,32 @@
 /*                                                                    */
 /**********************************************************************/
 
+#include <string.h>           /* for memmove and memcpy */
+#include <stdlib.h>           /* for malloc and realloc */
+
 #if defined(AREG_PTHREAD_LOCK)
 #include <pthread.h>          /* for thread locks */
 #elif defined(AREG_OPENMP_LOCK)
 #include <omp.h>              /* for openmp locks */
 #endif
 
-#include <string.h>     /* for memmove and memcpy */
-#include <stdlib.h>     /* for malloc and realloc */
 /*#include "aregister.h"*/
 
 /**********************************************************************/
 
 /* Basic search item */
 struct keyval {
-    const void* key;     /* what to search for (T***)    */
-          void* val;     /* what to  find (header_t*)    */
+    const void* key;          /* what to search for (T***)   */
+          void* val;          /* what to  find (header_t*)   */
 };
 
-typedef size_t clue_t;    /* use clues for faster lookup */
+typedef size_t clue_t;        /* use clues for faster lookup */
 
-#define NOCLUE        ((clue_t)(-1))  /* error/ignorance */
-#define AREG_SUCCESS   0  /* function call successful    */
-#define AREG_FAILURE   1  /* an error occurred           */
-#define AREG_ERROR     1  /* other name for AREG_FAILURE */
-#define AREG_NOT_FOUND 2  /*  entry not found            */
+#define NOCLUE((clue_t)(-1))  /* error/ignorance             */
+#define AREG_SUCCESS   0      /* function call successful    */
+#define AREG_FAILURE   1      /* an error occurred           */
+#define AREG_ERROR     1      /* other name for AREG_FAILURE */
+#define AREG_NOT_FOUND 2      /*  entry not found            */
 
 /**********************************************************************/
 
