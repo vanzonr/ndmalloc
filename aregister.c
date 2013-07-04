@@ -21,14 +21,15 @@
 /**********************************************************************/
 
 /* Basic search item */
-struct keyval {
-    const void* key;          /* what to search for (T***)   */
-          void* val;          /* what to  find (header_t*)   */
-};
 
+#ifndef areg_val_t
+#define areg_val_t void*           /* use -Dareg_val_t=void* on cmdline */
+#endif
+
+typedef const void* areg_key_t;    /* key type                    */
 typedef size_t clue_t;        /* use clues for faster lookup */
 
-#define NOCLUE((clue_t)(-1))  /* error/ignorance             */
+#define NOCLUE ((clue_t)(-1)) /* error/ignorance             */
 #define AREG_SUCCESS   0      /* function call successful    */
 #define AREG_FAILURE   1      /* an error occurred           */
 #define AREG_ERROR     1      /* other name for AREG_FAILURE */
@@ -50,10 +51,12 @@ static omp_lock_t      areg_mutex;
 #define nregmaxinit 512
 #define nreginc     512
 
-static size_t          nregmax = nregmaxinit;
-static size_t          nreg    = 0;
-static struct keyval   reginit[nregmaxinit];
-static struct keyval*  reg     = reginit;
+static size_t  nregmax = nregmaxinit;
+static size_t  nreg    = 0;
+static areg_key_t   keyreginit[nregmaxinit];
+static areg_val_t   valreginit[nregmaxinit];
+static areg_key_t*  keyreg  = keyreginit;
+static areg_val_t*  valreg  = valreginit;
 
 /**********************************************************************/
 
@@ -63,9 +66,9 @@ void ABC()
     size_t i;
     for (i = 0; i < nreg; i++) {
         printf("%p %p %d\n", 
-               reg[i].key, 
-               reg[i].val, 
-               *(int*)(reg[i].val));
+               keyreg[i], 
+               valreg[i], 
+               *(int*)(valreg[i]));
     }
     printf("*****************\n");
 }
@@ -73,7 +76,7 @@ void ABC()
 /**********************************************************************/
 
 static inline
-int internal_areg_find(const void* key, clue_t clue, size_t* index)
+int internal_areg_find(areg_key_t key, clue_t clue, size_t* index)
 {
  /* Find the index where 'key' is stored, starting at position 'clue'
     (or at nreg/2 if clue=NOCLUE). If found, store the index in
@@ -82,7 +85,6 @@ int internal_areg_find(const void* key, clue_t clue, size_t* index)
     error, it returns AREG_ERROR. */
 
     size_t  start = clue;
-    size_t  i;
 
     if (index == NULL) {
         return AREG_FAILURE;
@@ -99,12 +101,12 @@ int internal_areg_find(const void* key, clue_t clue, size_t* index)
         *index = 0;
         return AREG_NOT_FOUND;
     } else if (nreg==1) {
-        if (key > reg[0].key) {
+        if (key > keyreg[0]) {
             *index = 1;
         } else {
             *index = 0;
         }
-        if (reg[*index].key == key) {
+        if (keyreg[*index] == key) {
             return AREG_SUCCESS;
         } else {
             return AREG_NOT_FOUND;
@@ -116,65 +118,41 @@ int internal_areg_find(const void* key, clue_t clue, size_t* index)
     size_t highi = nreg-1;
     size_t nowi = start;
 
-    if (reg[nowi].key == key) {
+    if (keyreg[nowi] == key) {
         *index = nowi;
         return AREG_SUCCESS;
     }
-    if (reg[lowi].key == key) {
+    if (keyreg[lowi] == key) {
         *index = lowi;
         return AREG_SUCCESS;
     }
-    if (reg[lowi].key > key) {
+    if (keyreg[lowi] > key) {
         *index = lowi;
         return AREG_NOT_FOUND;
     }
-    if (reg[highi].key == key) {
+    if (keyreg[highi] == key) {
         *index = highi;
         return AREG_SUCCESS;
     }
-    if (reg[highi].key < key) {
+    if (keyreg[highi] < key) {
         *index = highi+1;
         return AREG_NOT_FOUND;
     }
     /* we get here if reg[lowi].key < key < reg[highi].key */
     /* start bisection */
     while (highi-lowi>1) {
-        if (reg[nowi].key <= key ) 
+        if (keyreg[nowi] <= key ) 
             lowi = nowi;
         else
             highi = nowi;
         nowi = (highi+lowi)/2;
-        if (reg[nowi].key == key ) {
+        if (keyreg[nowi] == key ) {
             *index = nowi;
             return AREG_SUCCESS;
         }
     }
     /* result should be highi */
     *index=highi;
-    return AREG_NOT_FOUND;
-    for (i = start; i < nreg; i++) {
-        if (reg[i].key >= key) {
-            *index = i;
-            if (reg[i].key == key) {
-                return AREG_SUCCESS;
-            } else {
-                return AREG_NOT_FOUND;
-            }
-        }
-    }
-    for (i = 0; i < start; i++) {
-        if (reg[start-i].key <= key) {
-            if (reg[start-i].key == key) {
-                *index = start-i+1;
-                return AREG_SUCCESS;
-            } else {
-                *index = start-i;
-                return AREG_NOT_FOUND;
-            } 
-        }    
-    }
-
-    *index = nreg;
     return AREG_NOT_FOUND;
 }
 
@@ -205,16 +183,17 @@ void internal_lock_off()
     #endif
 }
 
-int areg_add(const void* key, void* val, clue_t* clue) 
+int areg_add(areg_key_t key, areg_val_t val, clue_t* clue) 
 {
  /* Add a (key, value) and return a clue to where to find key. Returns
     and error code, which is 0 if the addition was successful. If
     clue==NULL, no clue is given. */
 
-    size_t  index  = 0;
-    int     exitcode = AREG_FAILURE;
-    int     notpresent;
-    struct keyval* newreg;
+    size_t       index  = 0;
+    int          exitcode = AREG_FAILURE;
+    int          notpresent;
+    areg_key_t*  newkeyreg;
+    areg_val_t*  newvalreg;
     
 
     if (key == NULL || val == NULL) {
@@ -229,22 +208,38 @@ int areg_add(const void* key, void* val, clue_t* clue)
         
         if (nregmax == nregmaxinit) {
 
-            newreg = malloc((nregmaxinit+nreginc)*sizeof(struct keyval));
-            if (newreg)
-                memcpy(newreg, reg, nregmaxinit*sizeof(struct keyval));
+            newkeyreg = malloc((nregmaxinit+nreginc)*sizeof(areg_key_t));
+            if (newkeyreg!=NULL) {
+                newvalreg = malloc((nregmaxinit+nreginc)*sizeof(areg_val_t));
+                if (newvalreg==NULL) {
+                    free(newkeyreg);
+                    newkeyreg = NULL;
+                } else {
+                    memcpy(newkeyreg, keyreg, nregmaxinit*sizeof(areg_key_t));
+                    memcpy(newvalreg, valreg, nregmaxinit*sizeof(areg_val_t));
+                }
+            }
 
         } else {           
 
-            newreg = realloc(reg, (nregmax+nreginc)*sizeof(struct keyval));
+            newkeyreg = realloc(keyreg, (nregmax+nreginc)*sizeof(areg_key_t));
+            if (newkeyreg!=NULL) {
+                newvalreg = realloc(valreg, (nregmax+nreginc)*sizeof(areg_val_t));
+                if (newvalreg == NULL) {
+                    free(newkeyreg);
+                    newkeyreg = NULL;
+                }
+            }
 
         }
 
-        if (newreg == NULL) {                
+        if (newkeyreg == NULL) {           
             internal_lock_off();
             return AREG_ERROR;
         }
 
-        reg = newreg;
+        keyreg = newkeyreg;
+        valreg = newvalreg;
         nregmax += nreginc;
     }
 
@@ -254,14 +249,14 @@ int areg_add(const void* key, void* val, clue_t* clue)
     if (notpresent) {
         /* index given nu internal_areg_find holds insertion point */
         /* clear the spot */
-        if (index<nreg) 
-            memmove(reg+index+1, 
-                    reg+index, 
-                    (nreg-index)*sizeof(struct keyval));
+        if (index<nreg) {
+            memmove(keyreg+index+1, keyreg+index, (nreg-index)*sizeof(areg_key_t));
+            memmove(valreg+index+1, valreg+index, (nreg-index)*sizeof(areg_val_t));
+        }
         nreg++;
         /* put it there */
-        reg[index].key=key;
-        reg[index].val=val;
+        keyreg[index]=key;
+        valreg[index]=val;
         exitcode = AREG_SUCCESS;
     }
 
@@ -280,7 +275,7 @@ int areg_add(const void* key, void* val, clue_t* clue)
 
 /**********************************************************************/
 
-int areg_remove(const void* key, clue_t clue) 
+int areg_remove(areg_key_t key, clue_t clue) 
 {
  /* Remove the key-value pair associated with 'key'.  Pass in a clue
     that was given by areg_add() for faster lookup.  Returns 0 if pair is
@@ -293,9 +288,10 @@ int areg_remove(const void* key, clue_t clue)
 
     exitcode = internal_areg_find(key, clue, &index);
     if (exitcode == AREG_SUCCESS && index < nreg) {
-        if (index < nreg-1)  
-            memmove(reg+index, reg+index+1, 
-                    (nreg-index-1)*sizeof(struct keyval));
+        if (index < nreg-1)  {
+            memmove(keyreg+index, keyreg+index+1, (nreg-index-1)*sizeof(areg_key_t));
+            memmove(valreg+index, valreg+index+1, (nreg-index-1)*sizeof(areg_val_t));
+        }
         nreg--;
     }
     
@@ -307,25 +303,29 @@ int areg_remove(const void* key, clue_t clue)
             /* - determine the new maximum number of registrants */
             size_t newnregmax = nregmax-nreginc; 
             /* - perform the reallocation */
-            struct keyval* newreg 
-                = realloc(reg, newnregmax*sizeof(struct keyval));
+            areg_key_t* newkeyreg = realloc(keyreg, newnregmax*sizeof(areg_key_t));
+            areg_val_t* newvalreg = realloc(valreg, newnregmax*sizeof(areg_val_t));
             /* - check if successfull */
-            if (newreg != NULL) {
+            if (newkeyreg != NULL) {
                 /* - if so, reset the number of registrants */
                 nregmax = newnregmax;
                 /*   and the reg pointer */
-                reg = newreg;
+                keyreg = newkeyreg;
+                valreg = newvalreg;
             }
         } else if (nregmax == nregmaxinit+nreginc) {
             /* We get here if we have to shrink to initial buffer */
             /* - copy everything back to that initial buffer */
-            memcpy(reginit, reg, nreg*sizeof(struct keyval));
+            memcpy(keyreginit, keyreg, nreg*sizeof(areg_key_t));
+            memcpy(valreginit, valreg, nreg*sizeof(areg_val_t));
             /* - release memory taken by newer buffer */
-            free(reg);
+            free(keyreg);
+            free(valreg);
             /* - set the maximum number of registrants back */
             nregmax = nregmaxinit;
             /* - point the reg pointer back to the initial buffer */
-            reg = reginit;
+            keyreg = keyreginit;
+            keyreg = keyreginit;
         }
     }
 
@@ -335,7 +335,7 @@ int areg_remove(const void* key, clue_t clue)
 
 /**********************************************************************/
 
-int areg_lookup(const void* key, clue_t clue, void** value) 
+int areg_lookup(areg_key_t key, clue_t clue, areg_val_t* value) 
 {
  /* Returns the value associated with 'key'.  Pass in clue given by
     areg_add() for faster areg_lookup. Returns AREG_FAILURE if key is
@@ -356,7 +356,7 @@ int areg_lookup(const void* key, clue_t clue, void** value)
     exitcode = internal_areg_find(key, clue, &index);
 
     if ( exitcode == AREG_SUCCESS ) {
-        *value = reg[index].val;
+        *value = valreg[index];
     } else {
         *value = NULL;
     }
@@ -383,7 +383,7 @@ int main()
     int* p;
     clue_t cluea;
     clue_t cluec;
-    void* result;
+    areg_val_t result;
 
     ABC();
 
