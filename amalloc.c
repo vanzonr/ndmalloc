@@ -20,7 +20,6 @@
  * do indeed have a dynamically allocated array.
  */
 struct header {
-    size_t  size;         /* How big is each element?            */
     long    rank;         /* number of dimensions                */
     long    magic;        /* magic_mark                          */
     size_t* shape;        /* What are those dimensions?          */
@@ -89,8 +88,8 @@ static inline void da_create_header( void*    array,
                                      long     mark  )
 {  
     struct header* hdr = da_get_header_address(array);
-    /* note that data is not actually stored */
-    hdr->size  = size;
+    /* note that 'data' is not actually stored */
+    /* note that 'size' is not actually stored */
     hdr->rank  = rank;
     hdr->magic = mark;
     hdr->shape = shape;
