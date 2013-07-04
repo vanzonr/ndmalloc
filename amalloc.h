@@ -12,8 +12,6 @@
 
 #include <stddef.h>   /* for the definition of size_t */
 
-typedef int rank_t;
-
 /* 
  * Mimic the regular malloc/free/calloc/realloc set for allocating and
  * deallocating memory for multi-dimensional arrays.

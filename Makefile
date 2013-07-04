@@ -5,6 +5,7 @@ LDLIBS=-lm
 LDFLAGS=-g -O3 
 #-march=native  
 CFLAGS=-Wall -g -O3 -march=native -DNDEBUG -std=c99
+AMALLOCCFLAGS=-Wall -g -O3 -march=native -ansi -pedantic -finline-limit=128
 #-fast 
 #-fast
 DBGLDFLAGS=-g -gdwarf-2
@@ -36,7 +37,7 @@ amalloc2dspeed: amalloc2dspeed.o \
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc.o: amalloc.c amalloc.h
-	${CC} ${CFLAGS} -c -o $@ $<
+	${CC} ${AMALLOCCFLAGS} -c -o $@ $<
 
 test_damalloc.o: test_damalloc.c test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $<
