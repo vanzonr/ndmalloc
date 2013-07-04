@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
+#include <areg.h>
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
@@ -21,6 +22,7 @@
  * this array is only a view on another array.
  */
 struct header {
+    clue_t  clue;         /* clue for areg                       */
     int     rank;         /* number of dimensions                */
     int     magic;        /* magic_mark                          */
     size_t* shape;        /* What are those dimensions?          */
@@ -87,15 +89,17 @@ static int da_is_header_view(const struct header* hdr)
  */
  
 static void da_create_header( void*    array,
-                                     void*    data,
-                                     size_t   size,
-                                     int      rank,
-                                     size_t*  shape,
-                                     int      mark  )
+                              void*    data,
+                              size_t   size,
+                              int      rank,
+                              size_t*  shape,
+                              int      mark,
+                              clue_t   clue)
 {  
     struct header* hdr = da_get_header_address(array);
     /* note that 'data' is not actually stored */
     /* note that 'size' is not actually stored */
+    hdr->clue  = clue;
     hdr->rank  = rank;
     hdr->magic = mark;
     hdr->shape = shape;
@@ -105,13 +109,16 @@ static void da_create_header( void*    array,
  * Internal function to create the pointer-to-pointer structure for any rank 
  */
  
-static void* da_create_array(void* data, size_t size, int rank, size_t* shape)
+static void* da_create_array(void* data, size_t size, int rank, size_t* shape, clue_t* clue)
 {
-    if (rank <= 1) 
-
-        return data;
+    if (rank <= 1) {
+        
+        if (areg_add(data, clue) == AREG_SUCCESS)
+            return data;
+        else
+            return NULL;
        
-    else {
+    } else {
         
         int     i;
         size_t  j, ntot;
@@ -141,6 +148,7 @@ static void* da_create_array(void* data, size_t size, int rank, size_t* shape)
         for (j = 0; j < ntot; j++)
             ptr[j] = (char**)((char*)data 
                               + size*j*shape[rank-1]);
+        (void)areg_add(result, clue); /* should check error status */
         return (void*)result;
     }
 }
@@ -149,10 +157,12 @@ static void* da_create_array(void* data, size_t size, int rank, size_t* shape)
  * Internal function to release the memory allocated by da_create_array 
  */
  
-static void da_destroy_array(void* ptr)
+static void da_destroy_array(void* ptr, clue_t clue)
 {
-    if (ptr != NULL)
+    if (ptr != NULL) {
         free((char*)ptr - header_size);
+        (void)areg_remove(ptr, clue); /* should check error status */
+    }
 }
 
 /*
@@ -330,6 +340,7 @@ void* samalloc(size_t size, int rank, const size_t* shape)
     void*    array;
     void*    data;
     size_t   total_elements;
+    clue_t   clue;
 
     if (shape == NULL) 
         return NULL;
@@ -346,12 +357,12 @@ void* samalloc(size_t size, int rank, const size_t* shape)
         return NULL;
     }
 
-    array = da_create_array(data, size, rank, shapecopy);
+    array = da_create_array(data, size, rank, shapecopy, &clue);
     if (array == NULL) {
         da_destroy_shape(shapecopy);
         da_destroy_data(data);
     } else 
-        da_create_header(array, data, size, rank, shapecopy, magic_mark);
+        da_create_header(array, data, size, rank, shapecopy, magic_mark, clue);
 
     return array;
 }
@@ -380,6 +391,7 @@ void* sacalloc(size_t size, int rank, const size_t* shape)
     void*    array;
     void*    data;
     size_t   total_elements;
+    clue_t   clue;
     
     if (shape == NULL) 
         return NULL;
@@ -396,12 +408,12 @@ void* sacalloc(size_t size, int rank, const size_t* shape)
         return NULL;
     }
 
-    array = da_create_array(data, size, rank, shapecopy);
+    array = da_create_array(data, size, rank, shapecopy, &clue);
     if (array == NULL) {
         da_destroy_shape(shapecopy);
         da_destroy_data(data);
     } else
-        da_create_header(array, data, size, rank, shapecopy, magic_mark);
+        da_create_header(array, data, size, rank, shapecopy, magic_mark, clue);
 
     return array;
 }
@@ -438,9 +450,11 @@ void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
     void*      data;
     size_t     total_elements;
     int        oldrank;
+    clue_t     oldclue;
     size_t*    oldshape;
     size_t*    shapecopy;
     struct header*  hdr;
+    clue_t     clue;
     
     if (shape == NULL) 
         return NULL;
@@ -454,6 +468,7 @@ void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
     olddata  = da_get_data(ptr, rank);
     oldshape = hdr->shape;
     oldrank  = hdr->rank;
+    oldclue  = hdr->clue;
 
     shapecopy = da_copy_shape(rank, shape);
 
@@ -464,16 +479,18 @@ void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
         da_destroy_shape(shapecopy);
         return NULL;
     }
-    array = da_create_array(data, size, rank, shapecopy);
+    array = da_create_array(data, size, rank, shapecopy, &clue);
     if (array == NULL) {
         da_destroy_shape(shapecopy);
         da_destroy_data(data);
         return NULL;
     } else {
-        da_create_header(array, data, size, rank, shapecopy, magic_mark);
+        da_create_header(array, data, size, rank, shapecopy, magic_mark, clue);
         da_destroy_shape(oldshape);
         if (oldrank > 1) 
-            da_destroy_array(ptr);
+            da_destroy_array(ptr, oldclue);
+        else
+            areg_remove(ptr, oldclue);
         return array;
     }
 }
@@ -505,7 +522,7 @@ void afree(void* ptr)
                 void* data = da_get_data(ptr, hdr->rank);
                 da_destroy_data(data);
             }
-            da_destroy_array(ptr);
+            da_destroy_array(ptr, hdr->clue);
         }
     }
 }
@@ -600,7 +617,8 @@ size_t afullsize(const void* ptr)
 int aknown(const void* ptr)
 {
     struct header* hdr = da_get_header_address(ptr);
-    return da_is_header(hdr);
+    /* return da_is_header(hdr); */    
+    return hdr!=NULL && areg_lookup(ptr, hdr->clue)==AREG_SUCCESS;
 }
 
 /* 
@@ -620,7 +638,7 @@ void* saview(void* data, size_t size, int rank, const size_t* shape)
 {
     size_t*  shapecopy;
     void*    array;
-
+    clue_t   clue;
     if (shape == NULL || data == NULL || rank <= 1) 
         return NULL;
 
@@ -637,11 +655,11 @@ void* saview(void* data, size_t size, int rank, const size_t* shape)
         data = adata(data);
     }
 
-    array = da_create_array(data, size, rank, shapecopy);
+    array = da_create_array(data, size, rank, shapecopy, &clue);
     if (array == NULL) 
         da_destroy_shape(shapecopy);
     else 
-        da_create_header(array, data, size, rank, shapecopy, view_magic_mark);
+        da_create_header(array, data, size, rank, shapecopy, view_magic_mark, clue);
 
     return array;
 }

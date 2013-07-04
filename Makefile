@@ -14,18 +14,21 @@ DBGCFLAGS= -Wall -O0 -DDEBUG -g
 PRFLDFLAGS=-g ${PROFLAG}
 PRFCFLAGS= -Wall -O2 -DDEBUG -g ${PROFLAG}
 
-all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg testdarray5 testdarray5_dbg
+all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg testdarray5 testdarray5_dbg aregtest
 
-testdarray: testdarray.o amalloc.o
+aregtest: aregtest.o areg.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
-testdarray2: testdarray2.o amalloc.o
+testdarray: testdarray.o amalloc.o areg.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
-testdarray3: testdarray3.o amalloc.o
+testdarray2: testdarray2.o amalloc.o areg.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
-testdarray5: testdarray5.o amalloc.o
+testdarray3: testdarray3.o amalloc.o areg.o
+	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+
+testdarray5: testdarray5.o amalloc.o areg.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc2dspeed: amalloc2dspeed.o \
@@ -33,11 +36,17 @@ amalloc2dspeed: amalloc2dspeed.o \
                 amalloc2dspeed-exact.o \
                 amalloc2dspeed-dynamic.o \
                 amalloc2dspeed-amalloc.o \
-                amalloc.o pass.o test_damalloc.o
+                amalloc.o areg.o pass.o test_damalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc.o: amalloc.c amalloc.h
 	${CC} ${AMALLOCCFLAGS} -c -o $@ $<
+
+areg.o: areg.c areg.h
+	${CC} ${AMALLOCCFLAGS} -c -o $@ $<
+
+aregtest.o: aregtest.c areg.h
+	${CC} ${CFLAGS} -c -o $@ $<
 
 test_damalloc.o: test_damalloc.c test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $<
@@ -75,16 +84,16 @@ amalloc2dspeed-amalloc.o: amalloc2dspeed-amalloc.c amalloc.h cstopwatch.h test_d
 amalloc2dspeed-exact.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-testdarray_dbg: testdarray_dbg.o amalloc_dbg.o
+testdarray_dbg: testdarray_dbg.o amalloc_dbg.o areg_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
-testdarray2_dbg: testdarray2_dbg.o amalloc_dbg.o
+testdarray2_dbg: testdarray2_dbg.o amalloc_dbg.o areg_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
-testdarray3_dbg: testdarray3_dbg.o amalloc_dbg.o
+testdarray3_dbg: testdarray3_dbg.o amalloc_dbg.o areg_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
-testdarray5_dbg: testdarray5_dbg.o amalloc_dbg.o
+testdarray5_dbg: testdarray5_dbg.o amalloc_dbg.o areg_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc2dspeed_dbg: amalloc2dspeed_dbg.o \
@@ -92,7 +101,7 @@ amalloc2dspeed_dbg: amalloc2dspeed_dbg.o \
                     amalloc2dspeed-exact_dbg.o \
                     amalloc2dspeed-dynamic_dbg.o \
                     amalloc2dspeed-amalloc_dbg.o \
-                    amalloc_dbg.o pass.o test_damalloc_dbg.o
+                    amalloc_dbg.o areg_dbg.o pass.o test_damalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc2dspeed-dynamic_dbg.o: amalloc2dspeed-dynamic.c amalloc.h cstopwatch.h test_damalloc.h
@@ -108,6 +117,9 @@ amalloc2dspeed-exact_dbg.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_d
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
 amalloc_dbg.o: amalloc.c amalloc.h
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
+areg_dbg.o: areg.c areg.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
 test_damalloc_dbg.o: test_damalloc.c test_damalloc.h
@@ -146,4 +158,4 @@ amalloc2dspeed_prf: amalloc2dspeed_prf.o \
 	${CC} ${PRFLDFLAGS} -o $@ $^ ${LDLIBS}
 
 clean:
-	\rm -f amalloc2dspeed-amalloc_dbg.o amalloc2dspeed-dynamic_dbg.o amalloc_dbg.o test_damalloc.o testdarray5_dbg.o amalloc2dspeed-amalloc.o amalloc2dspeed-dynamic.o amalloc.o testdarray2_dbg.o testdarray5.o amalloc2dspeed-auto_dbg.o amalloc2dspeed-exact_dbg.o darray.o testdarray2.o testdarray_dbg.o amalloc2dspeed-auto.o amalloc2dspeed-exact.o pass.o testdarray3_dbg.o testdarray.o amalloc2dspeed_dbg.o amalloc2dspeed.o test_damalloc_dbg.o testdarray3.o
+	\rm -f amalloc2dspeed-amalloc_dbg.o amalloc2dspeed-dynamic_dbg.o amalloc_dbg.o areg_dbg.o test_damalloc.o testdarray5_dbg.o amalloc2dspeed-amalloc.o amalloc2dspeed-dynamic.o amalloc.o testdarray2_dbg.o testdarray5.o amalloc2dspeed-auto_dbg.o amalloc2dspeed-exact_dbg.o darray.o testdarray2.o testdarray_dbg.o amalloc2dspeed-auto.o amalloc2dspeed-exact.o pass.o testdarray3_dbg.o testdarray.o amalloc2dspeed_dbg.o amalloc2dspeed.o test_damalloc_dbg.o testdarray3.o areg.o aregtest.o
