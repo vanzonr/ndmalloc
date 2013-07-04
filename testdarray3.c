@@ -29,16 +29,18 @@ void print(float** array)
 int main()
 {
     float** a = amalloc(sizeof(float), 2, 4, 4);
+    fill(a);
+    print(a);
+
+    float* data = adata(a);
+    data[1] = 100;
+
     float** b = arealloc(a, sizeof(float), 2, 9, 2);
     float** c = aview(b, sizeof(float), 2, 3, 6);
     float d[3][5] = { {11,12,13,14,1},
                       {15,16,17,18,2},
                       {19,20,21,22,3} };
     float** e = autoview2(d);
-    fill(a);
-    float* data = adata(a);
-    data[1] = 100;
-    print(a);
     print(b);
     print(c);
     afree(b); /* not a! */
