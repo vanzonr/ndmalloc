@@ -1,17 +1,19 @@
 # Makefile for amalloc test programs
-CC=icc
+#CC=icc
 LDLIBS=-lm
-LDFLAGS=-g -O3 -fast
+#LDFLAGS=-g -O3 -fast
+LDFLAGS=-g -O3 
 #-march=native  
-CFLAGS=-Wall -g -O3 -fast -march=native -DNDEBUG -std=c99
+CFLAGS=-Wall -g -O3 -march=native -DNDEBUG -std=c99
+#-fast 
 #-fast
-DBGLDFLAGS=-g
+DBGLDFLAGS=-g -gdwarf-2
 DBGCFLAGS= -Wall -O0 -DDEBUG -g
 #PROFLAG=-pg
 PRFLDFLAGS=-g ${PROFLAG}
 PRFCFLAGS= -Wall -O2 -DDEBUG -g ${PROFLAG}
 
-all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg
+all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg testdarray4 testdarray4_dbg
 
 testdarray: testdarray.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
@@ -20,6 +22,9 @@ testdarray2: testdarray2.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 testdarray3: testdarray3.o amalloc.o
+	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+
+testdarray4: testdarray4.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc2dspeed: amalloc2dspeed.o \
@@ -43,6 +48,9 @@ testdarray2.o: testdarray2.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
 testdarray3.o: testdarray3.c amalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
+testdarray4.o: testdarray4.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
 pass.o: pass.c
@@ -75,6 +83,9 @@ testdarray2_dbg: testdarray2_dbg.o amalloc_dbg.o
 testdarray3_dbg: testdarray3_dbg.o amalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
+testdarray4_dbg: testdarray4_dbg.o amalloc_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+
 amalloc2dspeed_dbg: amalloc2dspeed_dbg.o \
                 amalloc2dspeed-auto_dbg.o \
                 amalloc2dspeed-exact_dbg.o \
@@ -96,6 +107,9 @@ testdarray2_dbg.o: testdarray2.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
 testdarray3_dbg.o: testdarray3.c amalloc.h
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
+testdarray4_dbg.o: testdarray4.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
 amalloc2dspeed_dbg.o: amalloc2dspeed.c amalloc.h  cstopwatch.h

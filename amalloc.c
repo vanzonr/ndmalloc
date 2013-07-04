@@ -492,9 +492,16 @@ size_t asize(const void* ptr, long dim)
 void* adata(void* ptr)
 {
     const struct header* hdr = da_get_header_address(ptr);
-    if (da_is_header(hdr))
-        return hdr->data;
-    else
+    if (da_is_header(hdr)) {
+        /* new version chasing pointers : */    
+        void** result = ptr;
+        int r = hdr->rank;
+        int i;
+        for (i=0; i<r-1; i++) 
+            result = (void**)(*result);
+        return result;
+        //return hdr->data;
+    } else
         return NULL;
 }
 

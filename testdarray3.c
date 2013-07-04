@@ -36,6 +36,8 @@ int main()
                       {19,20,21,22,3} };
     float** e = autoview2(d);
     fill(a);
+    float* data = adata(a);
+    data[1] = 100;
     print(a);
     print(b);
     print(c);
