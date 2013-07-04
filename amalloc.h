@@ -12,20 +12,22 @@
 
 #include <stddef.h>   /* for the definition of size_t */
 
+typedef int rank_t;
+
 /* 
  * Mimic the regular malloc/free/calloc/realloc set for allocating and
  * deallocating memory for multi-dimensional arrays.
  */
-void* amalloc   (size_t size, long rank, ...);
-void* acalloc   (size_t size, long rank, ...);
-void* arealloc  (void* ptr, size_t size, long rank, ...);
-void* aview     (void* data, size_t size, long rank, ...); 
+void* amalloc   (size_t size, int rank, ...);
+void* acalloc   (size_t size, int rank, ...);
+void* arealloc  (void* ptr, size_t size, int rank, ...);
+void* aview     (void* data, size_t size, int rank, ...); 
 void  afree     (void* ptr);
 
-void* samalloc  (size_t size, long rank, const size_t* n);
-void* sacalloc  (size_t size, long rank, const size_t* n);
-void* sarealloc (void* ptr, size_t size, long rank, const size_t* n);
-void* saview    (void* data, size_t size, long rank, const size_t* n); 
+void* samalloc  (size_t size, int, const size_t* n);
+void* sacalloc  (size_t size, int, const size_t* n);
+void* sarealloc (void* ptr, size_t size, int, const size_t* n);
+void* saview    (void* data, size_t size, int, const size_t* n); 
 
 /*
  * Description:
@@ -86,8 +88,8 @@ void* saview    (void* data, size_t size, long rank, const size_t* n);
  */
       int     aknown    (const void* ptr);
       int     aisview   (const void* ptr);
-      long    arank     (const void* ptr);
-      size_t  asize     (const void* ptr, long dim);
+      int     arank     (const void* ptr);
+      size_t  asize     (const void* ptr, int dim);
       size_t  afullsize (const void* ptr);
       void*   adata     (      void* ptr);
 const void*   acdata    (const void* ptr);
