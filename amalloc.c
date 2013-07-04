@@ -641,4 +641,5 @@ void* aview(void* data, size_t size, long rank, ...)
     return result;
 }
 
+sizeofheader() { return sizeof(header); }
 /* end of file amalloc.c */
