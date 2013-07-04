@@ -20,7 +20,6 @@
  * do indeed have a dynamically allocated array.
  */
 struct header {
-    void*   data;         /* Pointer to the contiguous elements  */
     size_t  size;         /* How big is each element?            */
     long    rank;         /* number of dimensions                */
     long    magic;        /* magic_mark                          */
@@ -90,7 +89,7 @@ static inline void da_create_header( void*    array,
                                      long     mark  )
 {  
     struct header* hdr = da_get_header_address(array);
-    hdr->data  = data;
+    /* note that data is not actually stored */
     hdr->size  = size;
     hdr->rank  = rank;
     hdr->magic = mark;
@@ -257,6 +256,32 @@ static inline void da_destroy_data(void* data)
 }
 
 /*
+ * Internal function to get the pointer to the data for an amalloc
+ * array.
+ */
+static inline void* da_get_data(void* ptr, long rank)
+{
+    void** result = ptr;
+    int i;
+    for (i = 0; i < rank-1; i++) 
+        result = (void**)(*result);
+    return (void*)result;
+
+}
+
+/* const version ('const' really is contagious). */
+static inline const void* da_get_cdata(const void* ptr, long rank)
+{
+    void const*const* result = ptr;
+    int i;
+    for (i = 0; i < rank-1; i++) 
+        result = (void const*const*)(*result);
+    return (const void*)result;
+
+}
+
+
+/*
  * IMPLEMENTATION OF THE INTERFACE
  */
 
@@ -409,7 +434,7 @@ void* sarealloc(void* ptr, size_t size, long rank, const size_t* shape)
     if (hdr == NULL || ! da_is_header(hdr) || da_is_header_view(hdr) )
       return NULL;
 
-    olddata  = hdr->data;
+    olddata  = da_get_data(ptr, rank);
     oldshape = hdr->shape;
     oldrank  = hdr->rank;
 
@@ -459,8 +484,10 @@ void afree(void* ptr)
         struct header* hdr = da_get_header_address(ptr);
         if (da_is_header(hdr)) {
             da_destroy_shape(hdr->shape);
-            if (hdr->data && hdr->rank > 1 && ! da_is_header_view(hdr) ) 
-                da_destroy_data(hdr->data);
+            if (hdr->rank > 1 && ! da_is_header_view(hdr) ) {
+                void* data = da_get_data(ptr, hdr->rank);
+                da_destroy_data(data);
+            }
             da_destroy_array(ptr);
         }
     }
@@ -492,16 +519,9 @@ size_t asize(const void* ptr, long dim)
 void* adata(void* ptr)
 {
     const struct header* hdr = da_get_header_address(ptr);
-    if (da_is_header(hdr)) {
-        /* new version chasing pointers : */    
-        void** result = ptr;
-        int r = hdr->rank;
-        int i;
-        for (i=0; i<r-1; i++) 
-            result = (void**)(*result);
-        return result;
-        //return hdr->data;
-    } else
+    if (da_is_header(hdr)) 
+        return da_get_data(ptr, hdr->rank);
+    else
         return NULL;
 }
 
@@ -510,7 +530,7 @@ const void* acdata(const void* ptr)
 {
     const struct header* hdr = da_get_header_address(ptr);
     if (da_is_header(hdr))
-        return hdr->data;
+        return da_get_cdata(ptr, hdr->rank);
     else
         return NULL;
 }
