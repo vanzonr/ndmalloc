@@ -9,7 +9,7 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
-#include <areg.h>
+#include <areg.ic>
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
@@ -94,7 +94,7 @@ static void da_create_header( void*    array,
                               int      rank,
                               size_t*  shape,
                               int      mark,
-                              areg_clue_t   clue)
+                              areg_clue_t clue)
 {  
     struct header* hdr = da_get_header_address(array);
     /* note that 'data' is not actually stored */
@@ -340,7 +340,7 @@ void* samalloc(size_t size, int rank, const size_t* shape)
     void*    array;
     void*    data;
     size_t   total_elements;
-    areg_clue_t   clue;
+    areg_clue_t   clue = AREG_NOCLUE;
 
     if (shape == NULL) 
         return NULL;
@@ -391,7 +391,7 @@ void* sacalloc(size_t size, int rank, const size_t* shape)
     void*    array;
     void*    data;
     size_t   total_elements;
-    areg_clue_t   clue;
+    areg_clue_t   clue = AREG_NOCLUE;
     
     if (shape == NULL) 
         return NULL;
@@ -454,7 +454,7 @@ void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
     size_t*    oldshape;
     size_t*    shapecopy;
     struct header*  hdr;
-    areg_clue_t     clue;
+    areg_clue_t     clue = AREG_NOCLUE;
     
     if (shape == NULL) 
         return NULL;
@@ -638,7 +638,7 @@ void* saview(void* data, size_t size, int rank, const size_t* shape)
 {
     size_t*      shapecopy;
     void*        array;
-    areg_clue_t  clue;
+    areg_clue_t  clue = AREG_NOCLUE;
 
     if (shape == NULL || data == NULL || rank <= 1) 
         return NULL;

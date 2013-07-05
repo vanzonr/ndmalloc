@@ -28,5 +28,5 @@ int main()
     /* fill(b);  <-- This would bomb as b is not amalloc allocated */
     double **bptr = autoview2(b);
     fill(bptr);
-    return z;
+    return wow_this_can_be_done?0:z;
 }

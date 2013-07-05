@@ -1,0 +1,2 @@
+add a list of allocated pointers, to check if a pointer is amallocated.
+Just a list, will be more secure than a magic word.

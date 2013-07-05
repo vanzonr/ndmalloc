@@ -1,14 +1,38 @@
 /**********************************************************************/
 /*                                                                    */
-/*  areg.c: code for a register of pointers that are known to amalloc */
+/* areg.ci: code for a register of pointers that are known to amalloc */
 /*                                                                    */
-/*  (C) Copyright 2013 Ramses van Zon                                 */
+/* (C) Copyright 2013 Ramses van Zon                                  */
 /*                                                                    */
 /**********************************************************************/
 
 #include <string.h>               /* for memmove and memcpy      */
 #include <stdlib.h>               /* for malloc and realloc      */
-#include "areg.h"
+
+typedef const void* areg_ptr_t;   /* store constant pointers only*/
+typedef size_t      areg_clue_t;  /* use clues for faster lookup */
+
+#define AREG_NOCLUE ((areg_clue_t)(0)) /* error/ignorance             */
+#define AREG_SUCCESS   0          /* function call successful    */
+#define AREG_FAILURE   1          /* an error occurred           */
+#define AREG_NOT_FOUND 2          /* entry not found             */
+
+/* Register a pointer.  Return a clue to where to find pointer in
+   *clue.  Returns and error code, which is AREG_SUCCESS if the
+   addition was successful, and AREG_FAILURE if it was not. */
+/* int areg_add(areg_ptr_t ptr, areg_clue_t* clue); */
+
+/* Remove the pointer-value pair associated with 'ptr'.  Pass in a
+   clue that was given by areg_add() for faster lookup, or '0'.
+   Returns AREG_SUCCESS if pair is removed and 1 if 'pointer' was not
+   found. */
+/* int areg_remove(areg_ptr_t pointer, areg_clue_t clue); */
+
+/* Checks if 'ptr' was registerd.  Pass in clue given by areg_add()
+   for faster lookup. Returns AREG_SUCCESS if pointer is found,
+   AREG_FAILURE if it is not. */
+/* int areg_lookup(areg_ptr_t pointer, areg_clue_t clue); */
+
 
 /* For the routines to be thread safe, use pthreads or openmp.  */
 #if defined(AREG_PTHREAD_LOCK)
@@ -33,13 +57,17 @@ STATIC size_t      nreg    = 0;
 static areg_ptr_t  keyreginit[nregmaxinit];
 STATIC areg_ptr_t* keyreg  = keyreginit;
 
+/* #define istatic static */
+#define istatic
+
+
 /**********************************************************************/
 
 static
 int internal_areg_find(areg_ptr_t key, areg_clue_t clue, size_t* index)
 {
  /* Find the index where 'key' is stored, starting at position 'clue'
-    (or at nreg/2 if clue=NOCLUE). If found, stores the index in
+    (or at nreg/2 if clue=AREG_NOCLUE). If found, stores the index in
     'index' and returns AREG_SUCCESS, if not found, stores the
     insertion point in 'index' and returns AREG_NOT_FOUND.  Upon
     error, it returns AREG_FAILURE. */
@@ -56,7 +84,7 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, size_t* index)
 
     /* ensure start is reasonable */
     start = clue;
-    if (start == NOCLUE) {
+    if (start == AREG_NOCLUE) {
         start = nreg/2;
     }  else if (nreg!=0 && start >= nreg) {
         start = nreg-1;
@@ -161,6 +189,7 @@ void internal_lock_off()
 
 /**********************************************************************/
 
+istatic
 int areg_add(areg_ptr_t key, areg_clue_t* clue) 
 {
  /* Add a key and return a clue to where to find the key. Returns
@@ -204,7 +233,7 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
     }
 
     /* find the ordered spot (gets put in index) */
-    notpresent = ( internal_areg_find(key, NOCLUE, &index) 
+    notpresent = ( internal_areg_find(key, AREG_NOCLUE, &index) 
                    == AREG_NOT_FOUND ); /* must not be found */
     if (notpresent) {
         /* index given nu internal_areg_find holds insertion point */
@@ -221,7 +250,7 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
 
     if (clue != NULL) {
         if (exitcode != AREG_SUCCESS) 
-            *clue = NOCLUE;
+            *clue = AREG_NOCLUE;
         else 
             *clue = index;
     }
@@ -233,6 +262,7 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
 
 /**********************************************************************/
 
+istatic
 int areg_remove(areg_ptr_t key, areg_clue_t clue) 
 {
  /* Remove the key 'key'.  Pass in a clue that was given by areg_add()
@@ -298,6 +328,7 @@ int areg_remove(areg_ptr_t key, areg_clue_t clue)
 
 /**********************************************************************/
 
+istatic
 int areg_lookup(areg_ptr_t key, areg_clue_t clue) 
 {
  /* Looks for 'key'.  Pass in clue given by areg_add() for faster

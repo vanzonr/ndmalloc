@@ -30,16 +30,12 @@ int main()
 {
     int i;
     int  a=1;
-    int  b=123;
     int  c=3;
-    int  d=4;
     int* pa = &a;
-    int* pb = &b;
     int* pc = &c;
-    int* pd = &d;
     int* p=NULL;
-    clue_t cluea;
-    clue_t cluec;
+    areg_clue_t cluea;
+    areg_clue_t cluec;
 
     ABC();
 
@@ -69,5 +65,5 @@ int main()
 
     AREG_CHECK(  areg_lookup(pa, cluea)  );
 
-    return p?*p:cluec*0;
+    return p?*p:cluec*y[0];
 }

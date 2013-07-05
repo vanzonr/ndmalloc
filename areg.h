@@ -14,7 +14,7 @@
 typedef const void* areg_ptr_t;   /* store constant pointers only*/
 typedef size_t      areg_clue_t;  /* use clues for faster lookup */
 
-#define NOCLUE ((areg_clue_t)(0)) /* error/ignorance             */
+#define AREG_NOCLUE ((areg_clue_t)(0)) /* error/ignorance             */
 #define AREG_SUCCESS   0          /* function call successful    */
 #define AREG_FAILURE   1          /* an error occurred           */
 #define AREG_NOT_FOUND 2          /* entry not found             */
