@@ -25,6 +25,8 @@ int main()
     afree((void*)a);
     for(k=0;k<10;k++)
         b[k]=calloc(4,sizeof(double));
-    fill(b);
+    /* fill(b);  <-- This would bomb as b is not amalloc allocated */
+    double **bptr = autoview2(b);
+    fill(bptr);
     return z;
 }

@@ -2,17 +2,18 @@
 CC=gcc
 LDLIBS=-lm
 #LDFLAGS=-g -O3 -fast
-LDFLAGS=-g -O3 
+LDFLAGS=-g -gdwarf-2 -O3 -pthread
 #-march=native  
-CFLAGS=-Wall -g -O3 -march=native -DNDEBUG -std=c99
-AMALLOCCFLAGS=-Wall -g -O3 -march=native -ansi -pedantic -finline-limit=128
+CFLAGS=-Wall -g -gdwarf-2 -O3 -march=native -DNDEBUG -std=c99 
+AMALLOCCFLAGS=-Wall -DAREG_PTHREAD_LOCK -g -gdwarf-2 -O3 -march=native -ansi -pedantic -finline-limit=128 
 #-fast 
 #-fast
-DBGLDFLAGS=-g -gdwarf-2
-DBGCFLAGS= -Wall -O0 -DDEBUG -g
+DBGLDFLAGS=-g -gdwarf-2 -pthread
+DBGCFLAGS= -Wall -O0 -DDEBUG -g -gdwarf-2
+AMALLOCDBGCFLAGS=-Wall -DAREG_PTHREAD_LOCK -g -gdwarf-2 -O0 -ansi -pedantic
 #PROFLAG=-pg
-PRFLDFLAGS=-g ${PROFLAG}
-PRFCFLAGS= -Wall -O2 -DDEBUG -g ${PROFLAG}
+PRFLDFLAGS=-g -gdwarf-2 -pthread ${PROFLAG}
+PRFCFLAGS= -Wall -O2 -DDEBUG -g  -gdwarf-2 ${PROFLAG}
 
 all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg testdarray5 testdarray5_dbg aregtest
 
@@ -117,7 +118,7 @@ amalloc2dspeed-exact_dbg.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_d
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
 amalloc_dbg.o: amalloc.c amalloc.h
-	${CC} ${DBGCFLAGS} -c -o $@ $<
+	${CC} ${AMALLOCDBGCFLAGS} -c -o $@ $<
 
 areg_dbg.o: areg.c areg.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<

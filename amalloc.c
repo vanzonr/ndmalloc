@@ -22,7 +22,7 @@
  * this array is only a view on another array.
  */
 struct header {
-    clue_t  clue;         /* clue for areg                       */
+    areg_clue_t  clue;         /* clue for areg                       */
     int     rank;         /* number of dimensions                */
     int     magic;        /* magic_mark                          */
     size_t* shape;        /* What are those dimensions?          */
@@ -94,7 +94,7 @@ static void da_create_header( void*    array,
                               int      rank,
                               size_t*  shape,
                               int      mark,
-                              clue_t   clue)
+                              areg_clue_t   clue)
 {  
     struct header* hdr = da_get_header_address(array);
     /* note that 'data' is not actually stored */
@@ -109,7 +109,7 @@ static void da_create_header( void*    array,
  * Internal function to create the pointer-to-pointer structure for any rank 
  */
  
-static void* da_create_array(void* data, size_t size, int rank, size_t* shape, clue_t* clue)
+static void* da_create_array(void* data, size_t size, int rank, size_t* shape, areg_clue_t* clue)
 {
     if (rank <= 1) {
         
@@ -157,7 +157,7 @@ static void* da_create_array(void* data, size_t size, int rank, size_t* shape, c
  * Internal function to release the memory allocated by da_create_array 
  */
  
-static void da_destroy_array(void* ptr, clue_t clue)
+static void da_destroy_array(void* ptr, areg_clue_t clue)
 {
     if (ptr != NULL) {
         free((char*)ptr - header_size);
@@ -340,7 +340,7 @@ void* samalloc(size_t size, int rank, const size_t* shape)
     void*    array;
     void*    data;
     size_t   total_elements;
-    clue_t   clue;
+    areg_clue_t   clue;
 
     if (shape == NULL) 
         return NULL;
@@ -391,7 +391,7 @@ void* sacalloc(size_t size, int rank, const size_t* shape)
     void*    array;
     void*    data;
     size_t   total_elements;
-    clue_t   clue;
+    areg_clue_t   clue;
     
     if (shape == NULL) 
         return NULL;
@@ -450,11 +450,11 @@ void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
     void*      data;
     size_t     total_elements;
     int        oldrank;
-    clue_t     oldclue;
+    areg_clue_t     oldclue;
     size_t*    oldshape;
     size_t*    shapecopy;
     struct header*  hdr;
-    clue_t     clue;
+    areg_clue_t     clue;
     
     if (shape == NULL) 
         return NULL;
@@ -636,9 +636,10 @@ int aisview(const void* ptr)
 /* Non-variadic version */
 void* saview(void* data, size_t size, int rank, const size_t* shape)
 {
-    size_t*  shapecopy;
-    void*    array;
-    clue_t   clue;
+    size_t*      shapecopy;
+    void*        array;
+    areg_clue_t  clue;
+
     if (shape == NULL || data == NULL || rank <= 1) 
         return NULL;
 
