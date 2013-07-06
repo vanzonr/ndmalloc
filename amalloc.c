@@ -22,10 +22,10 @@
  * this array is only a view on another array.
  */
 struct header {
-    areg_clue_t  clue;         /* clue for areg                       */
-    int     rank;         /* number of dimensions                */
-    int     magic;        /* magic_mark                          */
-    size_t* shape;        /* What are those dimensions?          */
+    areg_clue_t  clue;         /* clue for areg                  */
+    int          rank;         /* number of dimensions           */
+    int          magic;        /* magic_mark                     */
+    size_t*      shape;        /* What are those dimensions?     */
 };
 
 /* 
@@ -64,36 +64,15 @@ static struct header* da_get_header_address(const void* array)
 }
 
 /*
- * Internal function to check that a given header is for a dynamically
- * allocated array or a multi-dimensional view.
- */
- 
-static int da_is_header(const struct header* hdr)
-{
-    return (hdr != NULL) && 
-      ( hdr->magic == magic_mark || hdr->magic == view_magic_mark ); 
-}
-
-/*
- * Internal function to check that a given header is for a multi-dimensional
- * view.
- */
- 
-static int da_is_header_view(const struct header* hdr)
-{
-    return (hdr != NULL) && ( hdr->magic == view_magic_mark ); 
-}
-
-/*
  * Internal functions to prepend the dynamic pointer with a header 
  */
  
-static void da_create_header( void*    array,
-                              void*    data,
-                              size_t   size,
-                              int      rank,
-                              size_t*  shape,
-                              int      mark,
+static void da_create_header( void*       array,
+                              void*       data,
+                              size_t      size,
+                              int         rank,
+                              size_t*     shape,
+                              int         mark,
                               areg_clue_t clue)
 {  
     struct header* hdr = da_get_header_address(array);
@@ -304,7 +283,6 @@ static const void* da_get_cdata(const void* ptr, int rank)
     for (i = 0; i < rank-1; i++) 
         result = (void const*const*)(*result);
     return (const void*)result;
-
 }
 
 
@@ -333,13 +311,12 @@ static const void* da_get_cdata(const void* ptr, int rank)
  *  information about the multi-dimensional structure is associated
  *  with each dynamicaly allocated multi-dimensional array.
  */
-/* Non-variadic version */
 void* samalloc(size_t size, int rank, const size_t* shape)
 {
-    size_t*  shapecopy;
-    void*    array;
-    void*    data;
-    size_t   total_elements;
+    size_t*       shapecopy;
+    void*         array;
+    void*         data;
+    size_t        total_elements;
     areg_clue_t   clue = AREG_NOCLUE;
 
     if (shape == NULL) 
@@ -384,14 +361,13 @@ void* amalloc(size_t size, int rank, ...)
  *  The 'acalloc' function has the same functionality as amalloc, but
  *  also initialized the array to all zeros (by calling 'calloc').
  */
-/* Non-variadic version */
 void* sacalloc(size_t size, int rank, const size_t* shape)
 {
-    size_t*  shapecopy;
-    void*    array;
-    void*    data;
-    size_t   total_elements;
-    areg_clue_t   clue = AREG_NOCLUE;
+    size_t*      shapecopy;
+    void*        array;
+    void*        data;
+    size_t       total_elements;
+    areg_clue_t  clue = AREG_NOCLUE;
     
     if (shape == NULL) 
         return NULL;
@@ -431,6 +407,17 @@ void* acalloc(size_t size, int rank, ...)
     return result;
 }
 
+/* 
+ * Function to check if 'ptr's is an array allocated with (s)amalloc,
+ * (s)acalloc, (s)arealloc, or (s)aview.
+ */
+int aknown(const void* ptr)
+{
+    struct header* hdr = da_get_header_address(ptr);
+    return hdr != NULL 
+        && areg_lookup(ptr, hdr->clue) == AREG_SUCCESS;
+}
+
 /*
  *  The 'arealloc' function chances the dimensions and/or the size of
  *  the multi-dimenstional array 'ptr'.  The content of the array
@@ -442,17 +429,16 @@ void* acalloc(size_t size, int rank, ...)
  *  If the function fails, NULL is returned.  Known bug: the original
  *  'ptr' is still deallocated when 'arealloc' fails.
  */
-/* Non-variadic version */
 void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
 {
-    void*      array;
-    void*      olddata;
-    void*      data;
-    size_t     total_elements;
-    int        oldrank;
+    void*           array;
+    void*           olddata;
+    void*           data;
+    size_t          total_elements;
+    int             oldrank;
     areg_clue_t     oldclue;
-    size_t*    oldshape;
-    size_t*    shapecopy;
+    size_t*         oldshape;
+    size_t*         shapecopy;
     struct header*  hdr;
     areg_clue_t     clue = AREG_NOCLUE;
     
@@ -462,7 +448,7 @@ void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
     hdr = da_get_header_address(ptr);
 
     /* can only reshape amalloc arrays, not pointer, not views */
-    if (hdr == NULL || ! da_is_header(hdr) || da_is_header_view(hdr) )
+    if (hdr == NULL || ! aknown(ptr) || (hdr->magic&1) == 1 )
       return NULL;
 
     olddata  = da_get_data(ptr, rank);
@@ -514,17 +500,26 @@ void* arealloc(void* ptr, size_t size, int rank, ...)
  */
 void afree(void* ptr)
 {
-    if (ptr != NULL) {
+    if (aknown(ptr)) {
         struct header* hdr = da_get_header_address(ptr);
-        if (da_is_header(hdr)) {
-            da_destroy_shape(hdr->shape);
-            if (hdr->rank > 1 && ! da_is_header_view(hdr) ) {
-                void* data = da_get_data(ptr, hdr->rank);
-                da_destroy_data(data);
-            }
-            da_destroy_array(ptr, hdr->clue);
+        da_destroy_shape(hdr->shape);
+        if ( (hdr->rank > 1) && ((hdr->magic & 1) == 0) ) {
+            void* data = da_get_data(ptr, hdr->rank);
+            da_destroy_data(data);
         }
+        da_destroy_array(ptr, hdr->clue);
     }
+}
+
+/* 
+ * Function to check if 'ptr' is an array created with (s)aview.
+ */
+int aisview(const void* ptr)
+{
+    struct header* hdr = da_get_header_address(ptr);
+    return hdr != NULL 
+        && areg_lookup(ptr, hdr->clue) == AREG_SUCCESS 
+        && (hdr->magic & 1) == 1 ;
 }
 
 /*
@@ -536,13 +531,10 @@ void afree(void* ptr)
 size_t asize(const void* ptr, int dim)
 {
     struct header* hdr = da_get_header_address(ptr);
-    if (da_is_header(hdr)) {
-        if (dim < hdr->rank)
-            return hdr->shape[dim];
-        else
-            return 1;
-    } else
-        return 0;
+    if (dim < hdr->rank)
+        return hdr->shape[dim];
+    else
+        return 1;
 }
 
 /*
@@ -553,20 +545,13 @@ size_t asize(const void* ptr, int dim)
 void* adata(void* ptr)
 {
     const struct header* hdr = da_get_header_address(ptr);
-    if (da_is_header(hdr)) 
-        return da_get_data(ptr, hdr->rank);
-    else
-        return NULL;
+    return da_get_data(ptr, hdr->rank);
 }
 
 /* const version */
 const void* acdata(const void* ptr)
 {
-    const struct header* hdr = da_get_header_address(ptr);
-    if (da_is_header(hdr))
-        return da_get_cdata(ptr, hdr->rank);
-    else
-        return NULL;
+    return da_get_cdata(ptr, da_get_header_address(ptr)->rank);
 }
 
 /*
@@ -576,11 +561,7 @@ const void* acdata(const void* ptr)
  */
 int arank(const void* ptr)
 {
-    const struct header* hdr = da_get_header_address(ptr);
-    if (da_is_header(hdr))
-        return hdr->rank;
-    else
-        return 0;
+    return da_get_header_address(ptr)->rank;
 }
 
 /*
@@ -589,11 +570,7 @@ int arank(const void* ptr)
  */
 const size_t* ashape(const void* ptr)
 {
-    struct header* hdr = da_get_header_address(ptr);
-    if (da_is_header(hdr))
-        return hdr->shape;
-    else
-        return 0;
+    return da_get_header_address(ptr)->shape;
 }
 
 /*
@@ -604,36 +581,12 @@ const size_t* ashape(const void* ptr)
 size_t afullsize(const void* ptr)
 {
     struct header* hdr = da_get_header_address(ptr);
-    if (da_is_header(hdr))
-        return da_fullsize_shape(hdr->rank, hdr->shape);
-    else
-        return 0;
-}
-
-/* 
- * Function to check if 'ptr's is an array allocated with (s)amalloc,
- * (s)acalloc, (s)arealloc, or (s)aview.
- */
-int aknown(const void* ptr)
-{
-    struct header* hdr = da_get_header_address(ptr);
-    /* return da_is_header(hdr); */    
-    return hdr!=NULL && areg_lookup(ptr, hdr->clue)==AREG_SUCCESS;
-}
-
-/* 
- * Function to check if 'ptr's is an array created with (s)aview.
- */
-int aisview(const void* ptr)
-{
-    struct header* hdr = da_get_header_address(ptr);
-    return da_is_header_view(hdr);
+    return da_fullsize_shape(hdr->rank, hdr->shape);
 }
 
 /*
  * Function 'aview' allocates a multi-dimensional view on existing data.
  */
-/* Non-variadic version */
 void* saview(void* data, size_t size, int rank, const size_t* shape)
 {
     size_t*      shapecopy;
@@ -673,7 +626,7 @@ void* aview(void* data, size_t size, int rank, ...)
     va_start(arglist, rank);
     shape = da_create_shape(rank, arglist);
     va_end(arglist);
-    result = saview(data, size, rank, shape); /* call non-variadic function */
+    result = saview(data, size, rank, shape);
     da_destroy_shape(shape);
     return result;
 }

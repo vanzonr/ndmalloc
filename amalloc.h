@@ -100,28 +100,30 @@ const size_t* ashape    (const void* ptr);
  * versions samalloc, sacalloc, sarealloc and saview), and 0 if it was
  * not.
  *
- * The function 'ais view' checks if 'ptr' is a 'known
+ * The function 'aisview' checks if 'ptr' is a 'known
  * multi-dimensional array view created with 'aview' or 'saview'.
  *
  * The function 'arank' * returns the rank of multi-dimensional array
- * 'ptr', or zero if 'ptr' is not a known multi-dimensional array.
+ * 'ptr'. If 'ptr' is not a known multi-dimensional array, the result
+ * is undefined.
  *
  * The function 'asize' returns the extent in the given dimension
- * 'dim', If 'ptr' is not a known multi-dimensional array, or if 'dim'
- * is larger than the rank of that array, 'asize' returns zero.
+ * 'dim'. If 'ptr' is not a known multi-dimensional array, the result
+ * is undefined.
  *
  * The function 'afullsize' returns the total number of elements in
  * the multi-dimensional arrays (the product of all asize's). If 'ptr'
- * is not a known multi-dimensional array, 'afullsize' returns zero.
+ * is not a known multi-dimensional array, the result is undefined.
  *
- * The function 'adata' * returns the start of the data, or NULL if
- * 'ptr' is not a known multi-dimensional array.  The 'acdata' does
- * the same but a returns a const pointer, and can be used 
- * with a const pointer as an argument.
+ * The function 'adata' * returns the start of the data. The result is
+ * undefined if 'ptr' is not a known multi-dimensional array.  The
+ * 'acdata' does the same but a returns a const pointer, and can be
+ * used with a const pointer as an argument.
  *
  * The function 'ashape' returns a pointer the first element of an
  * array of sintegers which give the shape of the multi-dimensional
- * array, or NULL if 'ptr' is not a known multi-dimensional array.
+ * array. The result is undefined if 'ptr' is not a known
+ * multi-dimensional array.
  */
 
 
