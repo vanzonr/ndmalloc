@@ -340,9 +340,7 @@ int areg_lookup(areg_ptr_t key, areg_clue_t clue)
     if (key == NULL) 
         return AREG_FAILURE;
 
-    internal_lock_on();
     exitcode = internal_areg_find(key, clue, &index);
-    internal_lock_off();
 
     return exitcode;
 }
