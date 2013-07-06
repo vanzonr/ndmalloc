@@ -1,2 +1,13 @@
 add a list of allocated pointers, to check if a pointer is amallocated.
 Just a list, will be more secure than a magic word.
+
+New plan:
+
+Get rid of magic word. Still encode view vs. allocated by one bit, but
+in the clue. Do this by having clues multiplied by two, so the lower
+bit is available. Also make clues 32 bit (given the factor of two just
+introduced, really 31 bit) by making it an int.  This does not really
+limit the number of pointers, just makes the registry slower when you
+have over 1G of pointers. Rank+Clue+pointer-to-shape together is back
+to 16 bytes then.
+
