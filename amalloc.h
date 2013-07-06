@@ -21,12 +21,11 @@ void* acalloc   (size_t size, int rank, ...);
 void* arealloc  (void* ptr, size_t size, int rank, ...);
 void* aview     (void* data, size_t size, int rank, ...); 
 void  afree     (void* ptr);
-
+/* */
 void* samalloc  (size_t size, int, const size_t* n);
 void* sacalloc  (size_t size, int, const size_t* n);
 void* sarealloc (void* ptr, size_t size, int, const size_t* n);
 void* saview    (void* data, size_t size, int, const size_t* n); 
-
 /*
  * Description:
  *
