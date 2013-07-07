@@ -23,8 +23,8 @@
  */
 struct header {
     areg_clue_t  clue;         /* clue for areg                  */
-    int          rank;         /* number of dimensions           */
-    int          magic;        /* magic_mark                     */
+    short        rank;         /* number of dimensions           */
+    short        magic;        /* magic_mark                     */
     size_t*      shape;        /* What are those dimensions?     */
 };
 
@@ -33,8 +33,8 @@ struct header {
  * constant definitions presume at least 32 bits in an int, but will
  * still work with less bits.
  */
-static int magic_mark      = 0x19720616; /* in headers of allocated arrays */
-static int view_magic_mark = 0x19720617; /* in headers of views on arrays  */
+static short magic_mark      = 0x1972; /* in headers of allocated arrays */
+static short view_magic_mark = 0x1973; /* in headers of views on arrays  */
 
 /* 
  * Define an alignment policy, such that the headers and the actual
@@ -70,9 +70,9 @@ static struct header* da_get_header_address(const void* array)
 static void da_create_header( void*       array,
                               void*       data,
                               size_t      size,
-                              int         rank,
+                              short       rank,
                               size_t*     shape,
-                              int         mark,
+                              short       mark,
                               areg_clue_t clue)
 {  
     struct header* hdr = da_get_header_address(array);
@@ -88,7 +88,7 @@ static void da_create_header( void*       array,
  * Internal function to create the pointer-to-pointer structure for any rank 
  */
  
-static void* da_create_array(void* data, size_t size, int rank, size_t* shape, areg_clue_t* clue)
+static void* da_create_array(void* data, size_t size, short rank, size_t* shape, areg_clue_t* clue)
 {
     if (rank <= 1) {
         
@@ -99,7 +99,7 @@ static void* da_create_array(void* data, size_t size, int rank, size_t* shape, a
        
     } else {
         
-        int     i;
+        short   i;
         size_t  j, ntot;
         size_t  nalloc;    
         char**  palloc;
@@ -148,11 +148,11 @@ static void da_destroy_array(void* ptr, areg_clue_t clue)
  * Internal function to create a dimension array from a va_list
  */
  
-static size_t* da_create_shape(int rank, va_list arglist)
+static size_t* da_create_shape(short rank, va_list arglist)
 {
     size_t* shape = malloc(sizeof(size_t)*rank);    
     if (shape != NULL) {
-        int i;
+        short i;
         for (i = 0; i < rank; i++) 
             shape[i] = va_arg(arglist, size_t);
     }
@@ -163,13 +163,13 @@ static size_t* da_create_shape(int rank, va_list arglist)
  * Internal function to copy a dimension array
  */
  
-static size_t* da_copy_shape(int rank, const size_t* from)
+static size_t* da_copy_shape(short rank, const size_t* from)
 {
     size_t* shape = NULL;
     if (from != NULL) {
         shape = malloc(sizeof(size_t)*rank);    
         if (shape != NULL) {
-            int i;
+            short i;
             for (i = 0; i < rank; i++) { 
                 shape[i] = from[i];
             }
@@ -191,10 +191,10 @@ static void da_destroy_shape(size_t* ptr)
  * Internal function to determine total number of elements in a shape
  */
  
-static size_t da_fullsize_shape(int rank, size_t* ptr)
+static size_t da_fullsize_shape(short rank, size_t* ptr)
 {
     size_t fullsize;
-    int i;
+    short  i;
     if (ptr == NULL) 
         return 0;
     fullsize = 1;
@@ -264,10 +264,10 @@ static void da_destroy_data(void* data)
  * array.
  */
  
-static void* da_get_data(void* ptr, int rank)
+static void* da_get_data(void* ptr, short rank)
 {
     void** result = ptr;
-    int i;
+    short  i;
     for (i = 0; i < rank-1; i++) 
         result = (void**)(*result);
     return (void*)result;
@@ -276,10 +276,10 @@ static void* da_get_data(void* ptr, int rank)
 
 /* const version ('const' really is contagious). */
 
-static const void* da_get_cdata(const void* ptr, int rank)
+static const void* da_get_cdata(const void* ptr, short rank)
 {
     void const*const* result = ptr;
-    int i;
+    short i;
     for (i = 0; i < rank-1; i++) 
         result = (void const*const*)(*result);
     return (const void*)result;
@@ -311,7 +311,7 @@ static const void* da_get_cdata(const void* ptr, int rank)
  *  information about the multi-dimensional structure is associated
  *  with each dynamicaly allocated multi-dimensional array.
  */
-void* samalloc(size_t size, int rank, const size_t* shape)
+void* samalloc(size_t size, short rank, const size_t* shape)
 {
     size_t*       shapecopy;
     void*         array;
@@ -344,7 +344,7 @@ void* samalloc(size_t size, int rank, const size_t* shape)
     return array;
 }
 /* Variadic version */
-void* amalloc(size_t size, int rank, ...)
+void* amalloc(size_t size, short rank, ...)
 {
     void*    result;
     size_t*  shape;
@@ -361,7 +361,7 @@ void* amalloc(size_t size, int rank, ...)
  *  The 'acalloc' function has the same functionality as amalloc, but
  *  also initialized the array to all zeros (by calling 'calloc').
  */
-void* sacalloc(size_t size, int rank, const size_t* shape)
+void* sacalloc(size_t size, short rank, const size_t* shape)
 {
     size_t*      shapecopy;
     void*        array;
@@ -394,7 +394,7 @@ void* sacalloc(size_t size, int rank, const size_t* shape)
     return array;
 }
 /* Variadic version */
-void* acalloc(size_t size, int rank, ...)
+void* acalloc(size_t size, short rank, ...)
 {
     void*    result;
     size_t*  shape;
@@ -429,13 +429,13 @@ int aknown(const void* ptr)
  *  If the function fails, NULL is returned.  Known bug: the original
  *  'ptr' is still deallocated when 'arealloc' fails.
  */
-void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
+void* sarealloc(void* ptr, size_t size, short rank, const size_t* shape)
 {
     void*           array;
     void*           olddata;
     void*           data;
     size_t          total_elements;
-    int             oldrank;
+    short           oldrank;
     areg_clue_t     oldclue;
     size_t*         oldshape;
     size_t*         shapecopy;
@@ -481,7 +481,7 @@ void* sarealloc(void* ptr, size_t size, int rank, const size_t* shape)
     }
 }
 /* Variadic version */
-void* arealloc(void* ptr, size_t size, int rank, ...)
+void* arealloc(void* ptr, size_t size, short rank, ...)
 {
     void* result;
     size_t*  shape;
@@ -528,13 +528,13 @@ int aisview(const void* ptr)
  * about the multi-dimensional structure is associated with each
  * dynamicaly allocated multi-dimensional array.
  */
-size_t asize(const void* ptr, int dim)
+size_t asize(const void* ptr, short dim)
 {
     struct header* hdr = da_get_header_address(ptr);
     if (dim < hdr->rank)
         return hdr->shape[dim];
     else
-        return 1;
+        return 0;
 }
 
 /*
@@ -559,7 +559,7 @@ const void* acdata(const void* ptr)
  * if 'ptr' was not created with (s)amalloc, (s)acalloc, (s)arealloc
  * or (s)aview.
  */
-int arank(const void* ptr)
+short arank(const void* ptr)
 {
     return da_get_header_address(ptr)->rank;
 }
@@ -587,7 +587,7 @@ size_t afullsize(const void* ptr)
 /*
  * Function 'aview' allocates a multi-dimensional view on existing data.
  */
-void* saview(void* data, size_t size, int rank, const size_t* shape)
+void* saview(void* data, size_t size, short rank, const size_t* shape)
 {
     size_t*      shapecopy;
     void*        array;
@@ -618,7 +618,7 @@ void* saview(void* data, size_t size, int rank, const size_t* shape)
     return array;
 }
 /* Variadic version */
-void* aview(void* data, size_t size, int rank, ...)
+void* aview(void* data, size_t size, short rank, ...)
 {
     void*    result;
     size_t*  shape;
