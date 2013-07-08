@@ -31,7 +31,7 @@ typedef size_t      areg_clue_t;  /* use clues for faster lookup */
 /* Checks if 'ptr' was registerd.  Pass in clue given by areg_add()
    for faster lookup. Returns AREG_SUCCESS if pointer is found,
    AREG_FAILURE if it is not. */
-/* int areg_lookup(areg_ptr_t pointer, areg_clue_t clue); */
+/* int areg_lookup(areg_ptr_t pointer, areg_clue_t* clue); */
 
 
 /* For the routines to be thread safe, use pthreads or openmp.  */
@@ -78,17 +78,15 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, size_t* index)
     size_t highi;
     
     /* index must point somewhere */
-    if (index == NULL) {
+    if (index == NULL) 
         return AREG_FAILURE; 
-    }
 
     /* ensure start is reasonable */
     start = clue;
-    if (start == AREG_NOCLUE) {
+    if (start == AREG_NOCLUE) 
         start = nreg/2;
-    }  else if (nreg!=0 && start >= nreg) {
+    else if (nreg!=0 && start >= nreg) 
         start = nreg-1;
-    }
 
     /* the binary search algorithm below assumes lowi<highi, so we first
        need to catch corner cases: empty list, list of 1 */
@@ -96,16 +94,14 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, size_t* index)
         *index = 0;
         return AREG_NOT_FOUND;
     } else if (nreg==1) {
-        if (key > keyreg[0]) {
+        if (key > keyreg[0])
             *index = 1;
-        } else {
+        else
             *index = 0;
-        }
-        if (keyreg[*index] == key) {
+        if (keyreg[*index] == key)
             return AREG_SUCCESS;
-        } else {
+        else
             return AREG_NOT_FOUND;
-        }
     } 
 
     /* it also assumes key lies between keyreg[0] and keyreg[nreg-1],
@@ -201,9 +197,8 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
     int          notpresent;
     areg_ptr_t*  newkeyreg;
    
-    if (key == NULL) {
+    if (key == NULL)
         return AREG_FAILURE;
-    }
 
     internal_lock_on();
 
@@ -211,23 +206,16 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
     if (nreg == nregmax) { 
         
         if (nregmax == nregmaxinit) {
-
             newkeyreg = malloc((nregmaxinit+nreginc)*sizeof(areg_ptr_t));
-            if (newkeyreg!=NULL) {
-              memcpy(newkeyreg, keyreg, nregmaxinit*sizeof(areg_ptr_t));
-            }
-
-        } else {           
-
+            if (newkeyreg!=NULL) 
+                memcpy(newkeyreg, keyreg, nregmaxinit*sizeof(areg_ptr_t));
+        } else           
             newkeyreg = realloc(keyreg,(nregmax+nreginc)*sizeof(areg_ptr_t));
-
-        }
 
         if (newkeyreg == NULL) {           
             internal_lock_off();
             return AREG_FAILURE;
         }
-
         keyreg = newkeyreg;
         nregmax += nreginc;
     }
@@ -238,9 +226,8 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
     if (notpresent) {
         /* index given nu internal_areg_find holds insertion point */
         /* clear the spot */
-        if (index<nreg) {
+        if (index<nreg)
             memmove(keyreg+index+1, keyreg+index, (nreg-index)*sizeof(areg_ptr_t));
-        }
         nreg++;
         /* put it there */
         keyreg[index]=key;
@@ -329,7 +316,7 @@ int areg_remove(areg_ptr_t key, areg_clue_t clue)
 /**********************************************************************/
 
 istatic
-int areg_lookup(areg_ptr_t key, areg_clue_t clue) 
+int areg_lookup(areg_ptr_t key, areg_clue_t* clue) 
 {
  /* Looks for 'key'.  Pass in clue given by areg_add() for faster
     areg_lookup. Returns AREG_FAILURE if key is not found. */
@@ -339,9 +326,9 @@ int areg_lookup(areg_ptr_t key, areg_clue_t clue)
 
     if (key == NULL) 
         return AREG_FAILURE;
-
-    exitcode = internal_areg_find(key, clue, &index);
-
+    exitcode = internal_areg_find(key, *clue, &index);
+    if (exitcode == AREG_SUCCESS)
+        *clue = index;
     return exitcode;
 }
 

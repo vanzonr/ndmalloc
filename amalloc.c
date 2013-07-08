@@ -415,7 +415,7 @@ int aknown(const void* ptr)
 {
     struct header* hdr = da_get_header_address(ptr);
     return hdr != NULL 
-        && areg_lookup(ptr, hdr->clue) == AREG_SUCCESS;
+        && areg_lookup(ptr, &(hdr->clue)) == AREG_SUCCESS;
 }
 
 /*
@@ -518,7 +518,7 @@ int aisview(const void* ptr)
 {
     struct header* hdr = da_get_header_address(ptr);
     return hdr != NULL 
-        && areg_lookup(ptr, hdr->clue) == AREG_SUCCESS 
+        && areg_lookup(ptr, &(hdr->clue)) == AREG_SUCCESS 
         && (hdr->magic & 1) == 1 ;
 }
 
