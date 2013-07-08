@@ -419,6 +419,7 @@ void* acalloc(size_t size, short rank, ...)
 int aknown(const void* ptr)
 {
     struct header* hdr = da_get_header_address(ptr);
+    /* should check magic mark first */
     return hdr != NULL 
         && areg_lookup(ptr, &(hdr->clue)) == AREG_SUCCESS;
 }
@@ -521,6 +522,7 @@ void afree(void* ptr)
  */
 int aisview(const void* ptr)
 {
+    /* should check magic mark first */
     struct header* hdr = da_get_header_address(ptr);
     return hdr != NULL 
         && areg_lookup(ptr, &(hdr->clue)) == AREG_SUCCESS 
