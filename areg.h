@@ -38,6 +38,6 @@ int areg_remove(areg_ptr_t pointer, areg_clue_t clue);
    for faster lookup. Returns AREG_SUCCESS if pointer is found,
    AREG_FAILURE if it is not. */
 
-int areg_lookup(areg_ptr_t pointer, areg_clue_t clue);
+int areg_lookup(areg_ptr_t pointer, areg_clue_t* clue);
 
 #endif

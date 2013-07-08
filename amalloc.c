@@ -9,7 +9,12 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
+
+/* Note: in areg.ic, AREG_INT should set both a_index_t and areg_clue_t */
+
 #include <areg.ic>
+
+
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 

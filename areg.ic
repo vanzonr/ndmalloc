@@ -25,8 +25,14 @@
 #include <string.h>                   /* for memmove and memcpy       */
 #include <stdlib.h>                   /* for malloc and realloc       */
 
+/* AREG_INT sets both areg_clue_t and areg_index_t */
+#ifndef AREG_INT
+#define AREG_INT unsigned int
+#endif
+
 typedef const void* areg_ptr_t;       /* store constant pointers only */
-typedef size_t      areg_clue_t;      /* use clues for faster lookup  */
+typedef AREG_INT    areg_clue_t;      /* use clues for faster lookup  */
+typedef AREG_INT    areg_index_t;     /* number of stored pointers much fit in this */
 
 #define AREG_NOCLUE ((areg_clue_t)0)  /* error/ignorance              */
 #define AREG_SUCCESS   0              /* function call successful     */
@@ -54,10 +60,10 @@ typedef size_t      areg_clue_t;      /* use clues for faster lookup  */
 #ifndef STATIC
 #define STATIC
 #endif
-static size_t      nregmax = nregmaxinit;
-STATIC size_t      nreg    = 0;
-static areg_ptr_t  keyreginit[nregmaxinit];
-STATIC areg_ptr_t* keyreg  = keyreginit;
+static areg_index_t  nregmax = nregmaxinit;
+STATIC areg_index_t  nreg    = 0;
+static areg_ptr_t    keyreginit[nregmaxinit];
+STATIC areg_ptr_t*   keyreg  = keyreginit;
 
 /* #define istatic static */
 #define istatic
@@ -66,7 +72,7 @@ STATIC areg_ptr_t* keyreg  = keyreginit;
 /**********************************************************************/
 
 static
-int internal_areg_find(areg_ptr_t key, areg_clue_t clue, size_t* index)
+int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
 {
  /* Find the index where 'key' is stored, starting at position 'clue'
     (or at nreg/2 if clue=AREG_NOCLUE). If found, stores the index in
@@ -74,10 +80,7 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, size_t* index)
     insertion point in 'index' and returns AREG_NOT_FOUND.  Upon
     error, it returns AREG_FAILURE. */
 
-    size_t start;
-    size_t lowi;
-    size_t midi;
-    size_t highi;
+    areg_index_t start, lowi, midi, highi;
     
     /* index must point somewhere */
     if (index == NULL) 
@@ -194,10 +197,10 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
     an error code, which is 0 if the addition was successful. If
     clue==NULL, no clue is given. */
 
-    size_t       index  = 0;
-    int          exitcode = AREG_FAILURE;
-    int          notpresent;
-    areg_ptr_t*  newkeyreg;
+    areg_index_t  index  = 0;
+    int           exitcode = AREG_FAILURE;
+    int           notpresent;
+    areg_ptr_t*   newkeyreg;
    
     if (key == NULL)
         return AREG_FAILURE;
@@ -258,8 +261,8 @@ int areg_remove(areg_ptr_t key, areg_clue_t clue)
     for faster lookup.  Returns 0 if 'key' was removed and 1 if 'key'
     was not found. */
 
-    int     exitcode;
-    size_t  index;
+    int           exitcode;
+    areg_index_t  index;
 
     internal_lock_on();
 
@@ -280,7 +283,7 @@ int areg_remove(areg_ptr_t key, areg_clue_t clue)
 
             /* We just have to reallocate the buffer */
             /* - determine the new maximum number of registrants */
-            size_t newnregmax = nregmax-nreginc; 
+            areg_index_t newnregmax = nregmax-nreginc; 
 
             /* - perform the reallocation */
             areg_ptr_t* newkeyreg = realloc(keyreg, 
@@ -323,8 +326,8 @@ int areg_lookup(areg_ptr_t key, areg_clue_t* clue)
  /* Looks for 'key'.  Pass in clue given by areg_add() for faster
     areg_lookup. Returns AREG_FAILURE if key is not found. */
 
-    int     exitcode;
-    size_t  index;
+    int           exitcode;
+    areg_index_t  index;
 
     if (key == NULL) 
         return AREG_FAILURE;

@@ -63,7 +63,7 @@ int main()
     i=3;
     AREG_CHECK(  areg_add(x+i,NULL)  );
 
-    AREG_CHECK(  areg_lookup(pa, cluea)  );
+    AREG_CHECK(  areg_lookup(pa, &cluea)  );
 
     return p?*p:cluec*y[0];
 }
