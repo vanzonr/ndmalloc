@@ -38,8 +38,8 @@ int main()
 {
     const int n = 9;
     const int m = 5;
-    float *a1;
     float** a = amalloc(sizeof(float),2,n,m);
+    const float *a1 = acdata(a);
     int i, j;
 
     for (i=0;i<n;i++)
@@ -55,7 +55,7 @@ int main()
     print_7(a);
 
     afree(a);
-    return a1[0];
+    return a1[0]-11;
 }
 
 /************************************************/

@@ -1,44 +1,46 @@
-/**********************************************************************/
-/*                                                                    */
-/* areg.ci: code for a register of pointers that are known to amalloc */
-/*                                                                    */
-/* (C) Copyright 2013 Ramses van Zon                                  */
-/*                                                                    */
-/**********************************************************************/
+/*
+ * areg.ic: code for a register of pointers that are known to amalloc.
+ *          Included by amalloc.c.
+ *                                                                    
+ * int areg_add(areg_ptr_t ptr, areg_clue_t* clue); 
+ *   Registers a pointer.  Returns a clue to where to find pointer in
+ *   *clue.  Returns and error code, which is AREG_SUCCESS if the
+ *   addition was successful, and AREG_FAILURE if it was not. 
+ * 
+ * int areg_remove(areg_ptr_t pointer, areg_clue_t clue);
+ *   Removes the pointer-value pair associated with 'ptr'.  Pass in a
+ *   clue that was given by areg_add() for faster lookup, or '0'.
+ *   Returns AREG_SUCCESS if pair is removed and 1 if 'pointer' was
+ *   not found.
+ *
+ * int areg_lookup(areg_ptr_t pointer, areg_clue_t* clue); 
+ *   Checks if 'ptr' was registerd.  Pass in clue given by areg_add()
+ *   for faster lookup. Returns AREG_SUCCESS if pointer is found,
+ *   AREG_FAILURE if it is not. Updates clue for faster repeated
+ *   lookups.
+ *
+ * (C) Copyright 2013 Ramses van Zon
+ */
 
-#include <string.h>               /* for memmove and memcpy      */
-#include <stdlib.h>               /* for malloc and realloc      */
+#include <string.h>                   /* for memmove and memcpy       */
+#include <stdlib.h>                   /* for malloc and realloc       */
 
-typedef const void* areg_ptr_t;   /* store constant pointers only*/
-typedef size_t      areg_clue_t;  /* use clues for faster lookup */
+typedef const void* areg_ptr_t;       /* store constant pointers only */
+typedef size_t      areg_clue_t;      /* use clues for faster lookup  */
 
-#define AREG_NOCLUE ((areg_clue_t)(0)) /* error/ignorance             */
-#define AREG_SUCCESS   0          /* function call successful    */
-#define AREG_FAILURE   1          /* an error occurred           */
-#define AREG_NOT_FOUND 2          /* entry not found             */
-
-/* Register a pointer.  Return a clue to where to find pointer in
-   *clue.  Returns and error code, which is AREG_SUCCESS if the
-   addition was successful, and AREG_FAILURE if it was not. */
-/* int areg_add(areg_ptr_t ptr, areg_clue_t* clue); */
-
-/* Remove the pointer-value pair associated with 'ptr'.  Pass in a
-   clue that was given by areg_add() for faster lookup, or '0'.
-   Returns AREG_SUCCESS if pair is removed and 1 if 'pointer' was not
-   found. */
-/* int areg_remove(areg_ptr_t pointer, areg_clue_t clue); */
-
-/* Checks if 'ptr' was registerd.  Pass in clue given by areg_add()
-   for faster lookup. Returns AREG_SUCCESS if pointer is found,
-   AREG_FAILURE if it is not. */
-/* int areg_lookup(areg_ptr_t pointer, areg_clue_t* clue); */
-
+#define AREG_NOCLUE ((areg_clue_t)0)  /* error/ignorance              */
+#define AREG_SUCCESS   0              /* function call successful     */
+#define AREG_FAILURE   1              /* an error occurred            */
+#define AREG_NOT_FOUND 2              /* entry not found              */
 
 /* For the routines to be thread safe, use pthreads or openmp.  */
 #if defined(AREG_PTHREAD_LOCK)
   #include <pthread.h>    
   static pthread_mutex_t areg_mutex = PTHREAD_MUTEX_INITIALIZER;
-#elif defined(AREG_OPENMP_LOCK) || defined(_OPENMP)
+#elif defined(_OPENMP)
+  #ifndef AREG_OPENMP_LOCK
+  #define AREG_OPENMP_LOCK
+  #endif
   #include <omp.h>               
   static omp_lock_t areg_mutex;
 #endif
@@ -333,4 +335,3 @@ int areg_lookup(areg_ptr_t key, areg_clue_t* clue)
 }
 
 /**********************************************************************/
-

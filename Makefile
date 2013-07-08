@@ -15,7 +15,7 @@ AMALLOCDBGCFLAGS=-Wall -DAREG_PTHREAD_LOCK -g -gdwarf-2 -O0 -ansi -pedantic
 PRFLDFLAGS=-g -gdwarf-2 -pthread ${PROFLAG}
 PRFCFLAGS= -Wall -O2 -DDEBUG -g  -gdwarf-2 ${PROFLAG}
 
-all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg testdarray5 testdarray5_dbg aregtest
+all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray4 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg testdarray5 testdarray4_dbg testdarray5_dbg aregtest test1d test2d test3d test1d_dbg test2d_dbg test3d_dbg 
 
 aregtest: aregtest.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
@@ -29,8 +29,21 @@ testdarray2: testdarray2.o amalloc.o
 testdarray3: testdarray3.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
+testdarray4: testdarray5.o amalloc.o
+	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+
 testdarray5: testdarray5.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+
+test1d: test1d.o amalloc.o
+	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+
+test2d: test2d.o amalloc.o
+	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+
+test3d: test3d.o amalloc.o
+	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+
 
 amalloc2dspeed: amalloc2dspeed.o \
                 amalloc2dspeed-auto.o \
@@ -58,8 +71,21 @@ testdarray2.o: testdarray2.c amalloc.h
 testdarray3.o: testdarray3.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
+testdarray4.o: testdarray4.c amalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
 testdarray5.o: testdarray5.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
+
+test1d.o: test1d.c amalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
+test2d.o: test2d.c amalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
+test3d.o: test3d.c amalloc.h
+	${CC} ${CFLAGS} -c -o $@ $< 
+
 
 pass.o: pass.c
 	${CC} -O0 -g -c -o $@ $<
@@ -91,7 +117,19 @@ testdarray2_dbg: testdarray2_dbg.o amalloc_dbg.o
 testdarray3_dbg: testdarray3_dbg.o amalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
+testdarray4_dbg: testdarray4_dbg.o amalloc_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+
 testdarray5_dbg: testdarray5_dbg.o amalloc_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+
+test1d_dbg: test1d_dbg.o amalloc_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+
+test2d_dbg: test2d_dbg.o amalloc_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+
+test3d_dbg: test3d_dbg.o amalloc_dbg.o
 	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
 amalloc2dspeed_dbg: amalloc2dspeed_dbg.o \
@@ -132,7 +170,19 @@ testdarray2_dbg.o: testdarray2.c amalloc.h
 testdarray3_dbg.o: testdarray3.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
+testdarray4_dbg.o: testdarray4.c amalloc.h
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
 testdarray5_dbg.o: testdarray5.c amalloc.h
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
+test1d_dbg.o: test1d.c amalloc.h
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
+test2d_dbg.o: test2d.c amalloc.h
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
+test3d_dbg.o: test3d.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
 amalloc2dspeed_dbg.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
@@ -156,4 +206,4 @@ amalloc2dspeed_prf: amalloc2dspeed_prf.o \
 	${CC} ${PRFLDFLAGS} -o $@ $^ ${LDLIBS}
 
 clean:
-	\rm -f amalloc2dspeed-amalloc_dbg.o amalloc2dspeed-dynamic_dbg.o amalloc_dbg.o test_damalloc.o testdarray5_dbg.o amalloc2dspeed-amalloc.o amalloc2dspeed-dynamic.o amalloc.o testdarray2_dbg.o testdarray5.o amalloc2dspeed-auto_dbg.o amalloc2dspeed-exact_dbg.o darray.o testdarray2.o testdarray_dbg.o amalloc2dspeed-auto.o amalloc2dspeed-exact.o pass.o testdarray3_dbg.o testdarray.o amalloc2dspeed_dbg.o amalloc2dspeed.o test_damalloc_dbg.o testdarray3.o aregtest.o
+	\rm -f amalloc2dspeed-amalloc_dbg.o amalloc2dspeed-dynamic_dbg.o amalloc_dbg.o test_damalloc.o testdarray4_dbg.o testdarray4.o testdarray5_dbg.o amalloc2dspeed-amalloc.o amalloc2dspeed-dynamic.o amalloc.o testdarray2_dbg.o testdarray5.o amalloc2dspeed-auto_dbg.o amalloc2dspeed-exact_dbg.o darray.o testdarray2.o testdarray_dbg.o amalloc2dspeed-auto.o amalloc2dspeed-exact.o pass.o testdarray3_dbg.o testdarray.o amalloc2dspeed_dbg.o amalloc2dspeed.o test_damalloc_dbg.o testdarray3.o aregtest.o test1d.o test2d.o test3d.o test1d_dbg.o test2d_dbg.o test3d_dbg.o
