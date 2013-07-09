@@ -1,220 +1,211 @@
-# Makefile for amalloc test programs
-CC=gcc
-LDLIBS=-lm
-#LDFLAGS=-g -O3 -fast
+# Makefile for amalloc and its test programs
+
+OBJDIR=obj
+LIBDIR=lib
+
+LDLIBS=-lm -lamalloc
 LDFLAGS=-g -gdwarf-2 -O3 -pthread
-#-march=native  
-CFLAGS=-Wall -g -gdwarf-2 -O3 -march=native -DNDEBUG -std=c99 
-AMALLOCCFLAGS=-Wall -DAREG_PTHREAD_LOCK -g -gdwarf-2 -O3 -march=native -ansi -pedantic -finline-limit=256 
-#-fast 
-#-fast
+CFLAGS=-Wall -g -gdwarf-2 -O3 -march=native
 DBGLDFLAGS=-g -gdwarf-2 -pthread
+DBGLDLIBS=-lm -lamalloc_dbg
 DBGCFLAGS= -Wall -O0 -DDEBUG -g -gdwarf-2
-AMALLOCDBGCFLAGS=-Wall -DAREG_PTHREAD_LOCK -g -gdwarf-2 -O0 -ansi -pedantic
-#PROFLAG=-pg
-PRFLDFLAGS=-g -gdwarf-2 -pthread ${PROFLAG}
-PRFCFLAGS= -Wall -O2 -DDEBUG -g  -gdwarf-2 ${PROFLAG}
 
-all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray4 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg testdarray5 testdarray4_dbg testdarray5_dbg aregtest test1d test2d test3d test1d_dbg test2d_dbg test3d_dbg 
+AMALLOCCFLAGS=${CFLAGS} -DAREG_PTHREAD_LOCK -ansi -pedantic -finline-limit=256 
+AMALLOCDBGCFLAGS=${DBGCFLAGS} -DAREG_PTHREAD_LOCK -ansi -pedantic
 
-aregtest: aregtest.o 
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+release: testdarray testdarray2 testdarray3 testdarray4 amalloc2dspeed testdarray5 aregtest test1d test2d test3d  
 
-testdarray: testdarray.o amalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+debug: testdarray_dbg testdarray2_dbg testdarray3_dbg amalloc2dspeed_dbg testdarray4_dbg testdarray5_dbg test1d_dbg test2d_dbg test3d_dbg aregtest_dbg
 
-testdarray2: testdarray2.o amalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+all: release debug
 
-testdarray3: testdarray3.o amalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+${OBJDIR}/amalloc.o: amalloc.c amalloc.h areg.ic
+	${CC} ${AMALLOCCFLAGS} -fpic -c -o $@ $<
 
-testdarray4: testdarray5.o amalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+libamalloc.so.1.0: ${OBJDIR}/amalloc.o
+	${CC} ${LDFLAGS} -shared  -Wl,-soname,libamalloc.so.1 -o $@ $^
 
-testdarray5: testdarray5.o amalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+libamalloc.so.1: libamalloc.so.1.0
+	test -s libamalloc.so.1 || ln -s libamalloc.so.1.0 libamalloc.so.1
 
-test1d: test1d.o amalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+libamalloc.so: libamalloc.so.1
+	test -s libamalloc.so || ln -s libamalloc.so.1 libamalloc.so
 
-test2d: test2d.o amalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+amalloc2dspeed: ${OBJDIR}/amalloc2dspeed.o \
+                ${OBJDIR}/amalloc2dspeed-auto.o \
+                ${OBJDIR}/amalloc2dspeed-exact.o \
+                ${OBJDIR}/amalloc2dspeed-dynamic.o \
+                ${OBJDIR}/amalloc2dspeed-amalloc.o \
+                ${OBJDIR}/pass.o ${OBJDIR}/test_damalloc.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ ${OBJDIR}/amalloc2dspeed.o ${OBJDIR}/amalloc2dspeed-*.o ${OBJDIR}/pass.o ${OBJDIR}/test_damalloc.o ${LDLIBS}
 
-test3d: test3d.o amalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+aregtest: ${OBJDIR}/aregtest.o 
+	${CC} ${LDFLAGS} -o $@ $^ -lm
 
-libamalloc.so.1.0: amalloc.c amalloc.h areg.ic
-	${CC} ${AMALLOCCFLAGS} -fpic -c -o amalloc_pic.o amalloc.c
-	${CC} ${LDFLAGS} -shared  -Wl,-soname,libamalloc.so.1 -o libamalloc.so.1.0 amalloc_pic.o
-	#ln -s  libamalloc.so.1.0 libamalloc.so.1
-	#ln -s  libamalloc.so libamalloc.so.1
+testdarray: ${OBJDIR}/testdarray.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
 
-libamalloc_dbg.so.1.0: amalloc.c amalloc.h areg.ic
-	${CC} ${AMALLOCCFLAGS} -fpic -c -o amalloc_dbg_pic.o amalloc.c
-	${CC} ${LDFLAGS} -shared  -Wl,-soname,libamalloc_dbg.so.1 -o libamalloc_dbg.so.1.0 amalloc_dbg_pic.o
-	#ln -s  libamalloc_dbg.so.1.0 libamalloc_dbg.so.1
-	#ln -s  libamalloc_dbg.so libamalloc_dbg.so.1
+testdarray2: ${OBJDIR}/testdarray2.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
 
-amalloc2dspeed: amalloc2dspeed.o \
-                amalloc2dspeed-auto.o \
-                amalloc2dspeed-exact.o \
-                amalloc2dspeed-dynamic.o \
-                amalloc2dspeed-amalloc.o \
-                amalloc.o pass.o test_damalloc.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+testdarray3: ${OBJDIR}/testdarray3.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
 
-amalloc.o: amalloc.c amalloc.h areg.ic
-	${CC} ${AMALLOCCFLAGS} -c -o $@ $<
+testdarray4: ${OBJDIR}/testdarray4.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
 
-aregtest.o: areg.ic
+testdarray5: ${OBJDIR}/testdarray5.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
+
+test1d: ${OBJDIR}/test1d.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
+
+test2d: ${OBJDIR}/test2d.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
+
+test3d: ${OBJDIR}/test3d.o libamalloc.so
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
+
+${OBJDIR}/aregtest.o: areg.ic
 	${CC} ${CFLAGS} -DAREG_PTHREAD_LOCK -DO_AREGTEST -x c -c -o $@ $<
 
-test_damalloc.o: test_damalloc.c test_damalloc.h
+${OBJDIR}/test_damalloc.o: test_damalloc.c test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $<
 
-testdarray.o: testdarray.c amalloc.h
+${OBJDIR}/testdarray.o: testdarray.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-testdarray2.o: testdarray2.c amalloc.h
+${OBJDIR}/testdarray2.o: testdarray2.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-testdarray3.o: testdarray3.c amalloc.h
+${OBJDIR}/testdarray3.o: testdarray3.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-testdarray4.o: testdarray4.c amalloc.h
+${OBJDIR}/testdarray4.o: testdarray4.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-testdarray5.o: testdarray5.c amalloc.h
+${OBJDIR}/testdarray5.o: testdarray5.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-test1d.o: test1d.c amalloc.h
+${OBJDIR}/test1d.o: test1d.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-test2d.o: test2d.c amalloc.h
+${OBJDIR}/test2d.o: test2d.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-test3d.o: test3d.c amalloc.h
+${OBJDIR}/test3d.o: test3d.c amalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-
-pass.o: pass.c
+${OBJDIR}/pass.o: pass.c
 	${CC} -O0 -g -c -o $@ $<
 
-pass_prf.o: pass.c
-	${CC} -O0 -g ${PROFLAG} -c -o $@ $<
-
-amalloc2dspeed.o: amalloc2dspeed.c amalloc.h cstopwatch.h test_damalloc.h
+${OBJDIR}/amalloc2dspeed.o: amalloc2dspeed.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-amalloc2dspeed-dynamic.o: amalloc2dspeed-dynamic.c amalloc.h cstopwatch.h test_damalloc.h
+${OBJDIR}/amalloc2dspeed-dynamic.o: amalloc2dspeed-dynamic.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-amalloc2dspeed-auto.o: amalloc2dspeed-auto.c amalloc.h cstopwatch.h test_damalloc.h
+${OBJDIR}/amalloc2dspeed-auto.o: amalloc2dspeed-auto.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-amalloc2dspeed-amalloc.o: amalloc2dspeed-amalloc.c amalloc.h cstopwatch.h test_damalloc.h
+${OBJDIR}/amalloc2dspeed-amalloc.o: amalloc2dspeed-amalloc.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-amalloc2dspeed-exact.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_damalloc.h
+${OBJDIR}/amalloc2dspeed-exact.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-testdarray_dbg: testdarray_dbg.o amalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
 
-testdarray2_dbg: testdarray2_dbg.o amalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+${OBJDIR}/amalloc_dbg.o: amalloc.c amalloc.h areg.ic
+	${CC} ${AMALLOCDBGCFLAGS} -fpic -c -o $@ $<
 
-testdarray3_dbg: testdarray3_dbg.o amalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+libamalloc_dbg.so.1.0: ${OBJDIR}/amalloc_dbg.o
+	${CC} ${LDFLAGS} -shared  -Wl,-soname,libamalloc_dbg.so.1 -o libamalloc_dbg.so.1.0 ${OBJDIR}/amalloc_dbg.o
 
-testdarray4_dbg: testdarray4_dbg.o amalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+libamalloc_dbg.so.1: libamalloc_dbg.so.1.0
+	test -s libamalloc_dbg.so.1  || ln -s libamalloc_dbg.so.1.0 libamalloc_dbg.so.1
 
-testdarray5_dbg: testdarray5_dbg.o amalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+libamalloc_dbg.so: libamalloc_dbg.so.1
+	test -s libamalloc_dbg.so || ln -s libamalloc_dbg.so.1 libamalloc_dbg.so
 
-test1d_dbg: test1d_dbg.o amalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+aregtest_dbg: ${OBJDIR}/aregtest_dbg.o 
+	${CC} ${DBGLDFLAGS} -o $@ $^ -lm
 
-test2d_dbg: test2d_dbg.o amalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+${OBJDIR}/aregtest_dbg.o: areg.ic
+	${CC} ${DBGCFLAGS} -DAREG_PTHREAD_LOCK -DO_AREGTEST -x c -c -o $@ $<
 
-test3d_dbg: test3d_dbg.o amalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+testdarray_dbg: ${OBJDIR}/testdarray_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
 
-amalloc2dspeed_dbg: amalloc2dspeed_dbg.o \
-	            amalloc2dspeed-auto_dbg.o \
-                    amalloc2dspeed-exact_dbg.o \
-                    amalloc2dspeed-dynamic_dbg.o \
-                    amalloc2dspeed-amalloc_dbg.o \
-                    amalloc_dbg.o pass.o test_damalloc_dbg.o
-	${CC} ${DBGLDFLAGS} -o $@ $^ ${LDLIBS}
+testdarray2_dbg: ${OBJDIR}/testdarray2_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
 
-amalloc2dspeed-dynamic_dbg.o: amalloc2dspeed-dynamic.c amalloc.h cstopwatch.h test_damalloc.h
+testdarray3_dbg: ${OBJDIR}/testdarray3_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
+
+testdarray4_dbg: ${OBJDIR}/testdarray4_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
+
+testdarray5_dbg: ${OBJDIR}/testdarray5_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
+
+test1d_dbg: ${OBJDIR}/test1d_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
+
+test2d_dbg: ${OBJDIR}/test2d_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
+
+test3d_dbg: ${OBJDIR}/test3d_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
+
+amalloc2dspeed_dbg: ${OBJDIR}/amalloc2dspeed_dbg.o \
+	            ${OBJDIR}/amalloc2dspeed-auto_dbg.o \
+                    ${OBJDIR}/amalloc2dspeed-exact_dbg.o \
+                    ${OBJDIR}/amalloc2dspeed-dynamic_dbg.o \
+                    ${OBJDIR}/amalloc2dspeed-amalloc_dbg.o \
+                    libamalloc_dbg.so ${OBJDIR}/pass.o ${OBJDIR}/test_damalloc_dbg.o
+	${CC} ${DBGLDFLAGS} -o $@ $^ ${DBGLDLIBS}
+
+${OBJDIR}/amalloc2dspeed-dynamic_dbg.o: amalloc2dspeed-dynamic.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
-amalloc2dspeed-auto_dbg.o: amalloc2dspeed-auto.c amalloc.h cstopwatch.h test_damalloc.h
+${OBJDIR}/amalloc2dspeed-auto_dbg.o: amalloc2dspeed-auto.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
-amalloc2dspeed-amalloc_dbg.o: amalloc2dspeed-amalloc.c amalloc.h cstopwatch.h test_damalloc.h
+${OBJDIR}/amalloc2dspeed-amalloc_dbg.o: amalloc2dspeed-amalloc.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
-amalloc2dspeed-exact_dbg.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_damalloc.h
+${OBJDIR}/amalloc2dspeed-exact_dbg.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
-amalloc_dbg.o: amalloc.c amalloc.h areg.ic
-	${CC} ${AMALLOCDBGCFLAGS} -c -o $@ $<
-
-areg_dbg.o: areg.c areg.ic
+${OBJDIR}/test_damalloc_dbg.o: test_damalloc.c test_damalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-test_damalloc_dbg.o: test_damalloc.c test_damalloc.h
+${OBJDIR}/testdarray_dbg.o: testdarray.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-testdarray_dbg.o: testdarray.c amalloc.h
+${OBJDIR}/testdarray2_dbg.o: testdarray2.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-testdarray2_dbg.o: testdarray2.c amalloc.h
+${OBJDIR}/testdarray3_dbg.o: testdarray3.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-testdarray3_dbg.o: testdarray3.c amalloc.h
+${OBJDIR}/testdarray4_dbg.o: testdarray4.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-testdarray4_dbg.o: testdarray4.c amalloc.h
+${OBJDIR}/testdarray5_dbg.o: testdarray5.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-testdarray5_dbg.o: testdarray5.c amalloc.h
+${OBJDIR}/test1d_dbg.o: test1d.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-test1d_dbg.o: test1d.c amalloc.h
+${OBJDIR}/test2d_dbg.o: test2d.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-test2d_dbg.o: test2d.c amalloc.h
+${OBJDIR}/test3d_dbg.o: test3d.c amalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
-test3d_dbg.o: test3d.c amalloc.h
-	${CC} ${DBGCFLAGS} -c -o $@ $<
-
-amalloc2dspeed_dbg.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
+${OBJDIR}/amalloc2dspeed_dbg.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
-
-amalloc_prf.o: amalloc.c amalloc.h
-	${CC} ${PRFCFLAGS} -c -o $@ $<
-
-test_damalloc_prf.o: test_damalloc.c test_damalloc.h
-	${CC} ${PRFCFLAGS} -c -o $@ $<
-
-amalloc2dspeed_prf.o: amalloc2dspeed.c amalloc.h  cstopwatch.h
-	${CC} ${PRFCFLAGS} -c -o $@ $< 
-
-amalloc2dspeed_prf: amalloc2dspeed_prf.o \
-                    amalloc2dspeed-auto_prf.o \
-                    amalloc2dspeed-exact_prf.o \
-                    amalloc2dspeed-dynamic_prf.o \
-                    amalloc2dspeed-amalloc_prf.o \
-                    amalloc_prf.o pass_prf.o test_damalloc_prf.o
-	${CC} ${PRFLDFLAGS} -o $@ $^ ${LDLIBS}
 
 clean:
-	\rm -f amalloc2dspeed-amalloc_dbg.o amalloc2dspeed-dynamic_dbg.o amalloc_dbg.o test_damalloc.o testdarray4_dbg.o testdarray4.o testdarray5_dbg.o amalloc2dspeed-amalloc.o amalloc2dspeed-dynamic.o amalloc.o testdarray2_dbg.o testdarray5.o amalloc2dspeed-auto_dbg.o amalloc2dspeed-exact_dbg.o darray.o testdarray2.o testdarray_dbg.o amalloc2dspeed-auto.o amalloc2dspeed-exact.o pass.o testdarray3_dbg.o testdarray.o amalloc2dspeed_dbg.o amalloc2dspeed.o test_damalloc_dbg.o testdarray3.o aregtest.o test1d.o test2d.o test3d.o test1d_dbg.o test2d_dbg.o test3d_dbg.o
+	(cd ${OBJDIR} && \rm -f amalloc2dspeed-amalloc_dbg.o amalloc2dspeed-dynamic_dbg.o test_damalloc.o testdarray4_dbg.o testdarray4.o testdarray5_dbg.o amalloc2dspeed-amalloc.o amalloc2dspeed-dynamic.o amalloc.o testdarray2_dbg.o testdarray5.o amalloc2dspeed-auto_dbg.o amalloc2dspeed-exact_dbg.o darray.o testdarray2.o testdarray_dbg.o amalloc2dspeed-auto.o amalloc2dspeed-exact.o pass.o testdarray3_dbg.o testdarray.o amalloc2dspeed_dbg.o amalloc2dspeed.o test_damalloc_dbg.o testdarray3.o aregtest.o test1d.o test2d.o test3d.o test1d_dbg.o test2d_dbg.o test3d_dbg.o)
