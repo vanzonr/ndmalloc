@@ -63,7 +63,7 @@ void print_3(const float* a)
 {
     int i;
     int n;
-    assert(aknown(a));
+    assert(aisknown(a));
     n = asize(a,0);
     for (i=0;i<n;i++) 
         printf("%.5f ", a[i]);

@@ -17,7 +17,7 @@ PRFCFLAGS= -Wall -O2 -DDEBUG -g  -gdwarf-2 ${PROFLAG}
 
 all: testdarray testdarray_dbg testdarray2 testdarray2_dbg testdarray3 testdarray4 testdarray3_dbg amalloc2dspeed amalloc2dspeed_dbg testdarray5 testdarray4_dbg testdarray5_dbg aregtest test1d test2d test3d test1d_dbg test2d_dbg test3d_dbg 
 
-aregtest: aregtest.o amalloc.o
+aregtest: aregtest.o 
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 testdarray: testdarray.o amalloc.o
@@ -44,6 +44,17 @@ test2d: test2d.o amalloc.o
 test3d: test3d.o amalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
+libamalloc.so.1.0: amalloc.c amalloc.h areg.ic
+	${CC} ${AMALLOCCFLAGS} -fpic -c -o amalloc_pic.o amalloc.c
+	${CC} ${LDFLAGS} -shared  -Wl,-soname,libamalloc.so.1 -o libamalloc.so.1.0 amalloc_pic.o
+	#ln -s  libamalloc.so.1.0 libamalloc.so.1
+	#ln -s  libamalloc.so libamalloc.so.1
+
+libamalloc_dbg.so.1.0: amalloc.c amalloc.h areg.ic
+	${CC} ${AMALLOCCFLAGS} -fpic -c -o amalloc_dbg_pic.o amalloc.c
+	${CC} ${LDFLAGS} -shared  -Wl,-soname,libamalloc_dbg.so.1 -o libamalloc_dbg.so.1.0 amalloc_dbg_pic.o
+	#ln -s  libamalloc_dbg.so.1.0 libamalloc_dbg.so.1
+	#ln -s  libamalloc_dbg.so libamalloc_dbg.so.1
 
 amalloc2dspeed: amalloc2dspeed.o \
                 amalloc2dspeed-auto.o \
@@ -53,11 +64,11 @@ amalloc2dspeed: amalloc2dspeed.o \
                 amalloc.o pass.o test_damalloc.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
-amalloc.o: amalloc.c amalloc.h
+amalloc.o: amalloc.c amalloc.h areg.ic
 	${CC} ${AMALLOCCFLAGS} -c -o $@ $<
 
-aregtest.o: aregtest.c areg.ic
-	${CC} ${CFLAGS} -c -o $@ $<
+aregtest.o: areg.ic
+	${CC} ${CFLAGS} -DAREG_PTHREAD_LOCK -DO_AREGTEST -x c -c -o $@ $<
 
 test_damalloc.o: test_damalloc.c test_damalloc.h
 	${CC} ${CFLAGS} -c -o $@ $<
@@ -152,7 +163,7 @@ amalloc2dspeed-amalloc_dbg.o: amalloc2dspeed-amalloc.c amalloc.h cstopwatch.h te
 amalloc2dspeed-exact_dbg.o: amalloc2dspeed-exact.c amalloc.h cstopwatch.h test_damalloc.h
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
-amalloc_dbg.o: amalloc.c amalloc.h
+amalloc_dbg.o: amalloc.c amalloc.h areg.ic
 	${CC} ${AMALLOCDBGCFLAGS} -c -o $@ $<
 
 areg_dbg.o: areg.c areg.ic

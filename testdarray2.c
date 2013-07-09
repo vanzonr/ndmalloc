@@ -8,7 +8,7 @@ void fill(double** array)
     const int n = asize(array,0);
     const int m = asize(array,1);
     int i, j;
-    assert(aknown(array));
+    assert(aisknown(array));
     for (i = 0; i < n; i++)
         for (j = 0; j < m; j++)
             array[i][j] = i + j;

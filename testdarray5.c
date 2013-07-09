@@ -5,7 +5,7 @@
 
 void fill(float*** array)
 {
-    assert( aknown(array) );
+    assert( aisknown(array) );
     float* const data = adata(array);
     size_t const size = afullsize(array);
     int i;
@@ -15,7 +15,7 @@ void fill(float*** array)
 
 void print(float*** array)
 {
-    assert( aknown(array) );
+    assert( aisknown(array) );
     assert( arank(array) == 3 );
     size_t const*const shape = ashape(array);
     int i,j,k;

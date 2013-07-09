@@ -1,12 +1,12 @@
 /*
- * areg.ic: code for a register of pointers that are known to amalloc.
- *          Included by amalloc.c.
+ * areg.ic: register of pointers known to amalloc. Included by amalloc.c.
  *                                                                    
  * int areg_add(areg_ptr_t ptr, areg_clue_t* clue); 
- *   Registers a pointer.  Returns a clue to where to find pointer in
- *   *clue.  Returns and error code, which is AREG_SUCCESS if the
- *   addition was successful, and AREG_FAILURE if it was not. 
- * 
+ *
+ *   Registers a pointer.  Returns a clue to where to find 'ptr' in
+ *   '*clue'.  Returns AREG_SUCCESS if the addition was successful,
+ *   and AREG_FAILURE if it was not.
+ *
  * int areg_remove(areg_ptr_t pointer, areg_clue_t clue);
  *   Removes the pointer-value pair associated with 'ptr'.  Pass in a
  *   clue that was given by areg_add() for faster lookup, or '0'.
@@ -32,14 +32,15 @@
 
 typedef const void* areg_ptr_t;       /* store constant pointers only */
 typedef AREG_INT    areg_clue_t;      /* use clues for faster lookup  */
-typedef AREG_INT    areg_index_t;     /* number of stored pointers much fit in this */
+typedef AREG_INT    areg_index_t;     /* number of stored pointers must fit in this */
 
 #define AREG_NOCLUE ((areg_clue_t)0)  /* error/ignorance              */
 #define AREG_SUCCESS   0              /* function call successful     */
 #define AREG_FAILURE   1              /* an error occurred            */
 #define AREG_NOT_FOUND 2              /* entry not found              */
 
-/* For the routines to be thread safe, use pthreads or openmp.  */
+/* For the routines to be thread safe, use pthreads or openmp locks.  */
+
 #if defined(AREG_PTHREAD_LOCK)
   #include <pthread.h>    
   static pthread_mutex_t areg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -49,6 +50,12 @@ typedef AREG_INT    areg_index_t;     /* number of stored pointers much fit in t
   #endif
   #include <omp.h>               
   static omp_lock_t areg_mutex;
+#else
+  #ifdef AREG_OPENMP_LOCK
+  #error Compilation does not support openmp
+  #else
+  #warning Lockless implementation: not thread-safe.
+  #endif
 #endif
 
 
@@ -56,18 +63,11 @@ typedef AREG_INT    areg_index_t;     /* number of stored pointers much fit in t
 
 #define nregmaxinit 512
 #define nreginc     512
-/* hack to make aregtest work: */
-#ifndef STATIC
-#define STATIC
-#endif
+
 static areg_index_t  nregmax = nregmaxinit;
-STATIC areg_index_t  nreg    = 0;
+static areg_index_t  nreg    = 0;
 static areg_ptr_t    keyreginit[nregmaxinit];
-STATIC areg_ptr_t*   keyreg  = keyreginit;
-
-/* #define istatic static */
-#define istatic
-
+static areg_ptr_t*   keyreg  = keyreginit;
 
 /**********************************************************************/
 
@@ -85,6 +85,12 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
     /* index must point somewhere */
     if (index == NULL) 
         return AREG_FAILURE; 
+
+    /* check clue first */
+    if (0<=clue && clue < nreg && keyreg[clue] == key) {
+        *index = clue;
+        return AREG_SUCCESS;
+    }
 
     /* ensure start is reasonable */
     start = clue;
@@ -152,7 +158,7 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
             return AREG_SUCCESS;
         }
     }
-    /* result should be highi */
+    /* if we get here, highi is the insertion point*/
     *index=highi;
     return AREG_NOT_FOUND;
 }
@@ -190,7 +196,7 @@ void internal_lock_off()
 
 /**********************************************************************/
 
-istatic
+static
 int areg_add(areg_ptr_t key, areg_clue_t* clue) 
 {
  /* Add a key and return a clue to where to find the key. Returns
@@ -254,7 +260,7 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
 
 /**********************************************************************/
 
-istatic
+static
 int areg_remove(areg_ptr_t key, areg_clue_t clue) 
 {
  /* Remove the key 'key'.  Pass in a clue that was given by areg_add()
@@ -320,7 +326,7 @@ int areg_remove(areg_ptr_t key, areg_clue_t clue)
 
 /**********************************************************************/
 
-istatic
+static
 int areg_lookup(areg_ptr_t key, areg_clue_t* clue) 
 {
  /* Looks for 'key'.  Pass in clue given by areg_add() for faster
@@ -334,7 +340,72 @@ int areg_lookup(areg_ptr_t key, areg_clue_t* clue)
     exitcode = internal_areg_find(key, *clue, &index);
     if (exitcode == AREG_SUCCESS)
         *clue = index;
-    return exitcode;
+    return exitcode==AREG_SUCCESS?AREG_SUCCESS:AREG_FAILURE;
 }
 
 /**********************************************************************/
+
+#ifdef O_AREGTEST
+/**********************************************************************/
+/*                                                                    */
+/*  Test code for a register of pointers that are known to amalloc    */
+/*                                                                    */
+/**********************************************************************/
+
+#define AREG_CHECK(x) if(x)fprintf(stderr,"Warning ("__FILE__":%d): '"#x"' failed!\n",__LINE__);
+
+#include <stdio.h>
+void ABC() 
+{
+    size_t i;
+    for (i = 0; i < nreg; i++) {
+        printf("%p\n", keyreg[i]);
+    }
+    printf("*****************\n");
+}
+
+
+
+int main()
+{
+    int i;
+    int  a=1;
+    int  c=3;
+    int* pa = &a;
+    int* pc = &c;
+    int* p=NULL;
+    areg_clue_t cluea;
+    areg_clue_t cluec;
+
+    ABC();
+
+    AREG_CHECK(  areg_add(pa, &cluea)  );
+    ABC();
+    AREG_CHECK(  areg_add(pc, &cluec)  );
+    ABC();
+
+    AREG_CHECK(  areg_remove(pc, cluec)   );
+    AREG_CHECK(  areg_remove(pc, AREG_NOCLUE)  );
+    ABC();
+
+    #define nnumbers 1010000
+    int x[nnumbers];
+    int y[nnumbers];
+    for (i=0;i<nnumbers;i++) {
+        x[i]=i; y[i]=1000+i;
+        if (i!=3) {
+            AREG_CHECK(  areg_add(x+i,NULL)  );
+        }
+    }
+    i=3;
+    AREG_CHECK(  areg_add(x+i,NULL)  );
+
+    i=3;
+    AREG_CHECK(  areg_add(x+i,NULL)  );
+
+    AREG_CHECK(  areg_lookup(pa, &cluea)  );
+
+    return p?*p:cluec*y[0];
+}
+
+#endif

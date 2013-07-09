@@ -8,7 +8,7 @@ void fill(float*** array)
     const size_t* const shape = ashape(array);
     float* data = adata(array);
     int i;
-    assert( aknown(array) );
+    assert( aisknown(array) );
     assert( arank(array) == 3 );
     for (i = 0; i < shape[0]*shape[1]*shape[2]; i++)
         data[i] = i+1;
@@ -18,7 +18,7 @@ void print(float*** array)
 {
     const size_t* const shape = ashape(array);
     int i,j,k;
-    assert( aknown(array) );
+    assert( aisknown(array) );
     assert( arank(array) == 3 );
     for (i = 0; i < shape[0]; i++) {
         for (j = 0; j < shape[1]; j++) {
