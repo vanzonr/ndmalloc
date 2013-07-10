@@ -1,8 +1,8 @@
-/* test1d.c - test 1 dimensional arrays from amalloc */
+/* test1d.c - test 1 dimensional arrays from ndmalloc */
 
 #include <stdio.h>
 #include <assert.h>
-#include "amalloc.h"
+#include "ndmalloc.h"
 
 /* Three different signatures of a print function for a 1d array: */
 
@@ -20,14 +20,14 @@ void print_3(const float* a);
 int main() 
 {
     float b[N];
-    float* a = amalloc(sizeof(float),1,N);
+    float* a = ndmalloc(sizeof(float),1,N);
     int i;
     for (i=0;i<N;i++)
         a[i] = i+1;
-    print_1(a, asize(a,0));
-    print_2(a, asize(a,0));
+    print_1(a, ndsize(a,0));
+    print_2(a, ndsize(a,0));
     print_3(a);
-    afree(a);
+    ndfree(a);
 
     for (i=0;i<N;i++)
       b[i]=i+1;
@@ -63,8 +63,8 @@ void print_3(const float* a)
 {
     int i;
     int n;
-    assert(aisknown(a));
-    n = asize(a,0);
+    assert(ndisknown(a));
+    n = ndsize(a,0);
     for (i=0;i<n;i++) 
         printf("%.5f ", a[i]);
     printf("\n");

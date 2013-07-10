@@ -1,6 +1,6 @@
 /*****************************************************************/
 /*                                                               */
-/*  areg.h: register for pointers to be used with amalloc.       */
+/*  areg.h: register for pointers to be used with ndmalloc.       */
 /*                                                               */
 /*  (C) Copyright 2013 Ramses van Zon                            */
 /*                                                               */

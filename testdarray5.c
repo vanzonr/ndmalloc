@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "amalloc.h"
+#include "ndmalloc.h"
 
 void fill(float*** array)
 {
-    assert( aisknown(array) );
-    float* const data = adata(array);
-    size_t const size = afullsize(array);
+    assert( ndisknown(array) );
+    float* const data = nddata(array);
+    size_t const size = ndfullsize(array);
     int i;
     for (i = 0; i < size; i++)
         data[i] = i+1;
@@ -15,9 +15,9 @@ void fill(float*** array)
 
 void print(float*** array)
 {
-    assert( aisknown(array) );
-    assert( arank(array) == 3 );
-    size_t const*const shape = ashape(array);
+    assert( ndisknown(array) );
+    assert( ndrank(array) == 3 );
+    size_t const*const shape = ndshape(array);
     int i,j,k;
     for (i = 0; i < shape[0]; i++) {
         for (j = 0; j < shape[1]; j++) {
@@ -34,18 +34,18 @@ void print(float*** array)
 
 int main()
 {
-    float*** a = amalloc(sizeof(float), 3, 5,4,3);
+    float*** a = ndmalloc(sizeof(float), 3, 5,4,3);
     fill(a);
 
-    float* data = adata(a);
+    float* data = nddata(a);
     data[1] = 100;
 
     print(a);
 
-    float*** b = arealloc(a, sizeof(float), 3, 9,2,2);
+    float*** b = ndrealloc(a, sizeof(float), 3, 9,2,2);
     print(b);
   
-    float*** c = aview (b, sizeof(float), 3, 3,5,2);
+    float*** c = ndview (b, sizeof(float), 3, 3,5,2);
     print(c);
 
     float d[3][2][5] = { {{11,12,13,14,1},{11,12,13,14,1}},
@@ -55,9 +55,9 @@ int main()
 
     print(e);
 
-    afree(b);
-    afree(c); /* although c and e are aviews, must deallocate */
-    afree(e);
+    ndfree(b);
+    ndfree(c); /* although c and e are aviews, must deallocate */
+    ndfree(e);
 
     return 0;
 }

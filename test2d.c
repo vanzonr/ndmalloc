@@ -1,7 +1,7 @@
 /* test2d.c */
 
 #include <stdio.h>
-#include "amalloc.h"
+#include "ndmalloc.h"
 
 /* Six different signatures of a print function for a matrix: */
 
@@ -38,23 +38,23 @@ int main()
 {
     const int n = 9;
     const int m = 5;
-    float** a = amalloc(sizeof(float),2,n,m);
-    const float *a1 = acdata(a);
+    float** a = ndmalloc(sizeof(float),2,n,m);
+    const float *a1 = ndcdata(a);
     int i, j;
 
     for (i=0;i<n;i++)
         for (j=0;j<m;j++)
             a[i][j]=(i+1)*10+j+1;
     
-    print_1(a, asize(a,0), asize(a,1));
-    print_2((void*)a, asize(a,0), asize(a,1));
-    print_3((void*)a, asize(a,0), asize(a,1));
-    print_4((void*)a, asize(a,0), asize(a,1));
-    print_5(adata(a), asize(a,0), asize(a,1));
-    print_6(acdata(a), asize(a,0), asize(a,1));
+    print_1(a, ndsize(a,0), ndsize(a,1));
+    print_2((void*)a, ndsize(a,0), ndsize(a,1));
+    print_3((void*)a, ndsize(a,0), ndsize(a,1));
+    print_4((void*)a, ndsize(a,0), ndsize(a,1));
+    print_5(nddata(a), ndsize(a,0), ndsize(a,1));
+    print_6(ndcdata(a), ndsize(a,0), ndsize(a,1));
     print_7(a);
 
-    afree(a);
+    ndfree(a);
     return a1[0]-11;
 }
 
@@ -128,8 +128,8 @@ void print_6(const float *a, int n, int m)
 void print_7(float** a) 
 {
     int i, j;
-    for (i=0;i<asize(a,0);i++) {
-        for (j=0;j<asize(a,1);j++) 
+    for (i=0;i<ndsize(a,0);i++) {
+        for (j=0;j<ndsize(a,1);j++) 
             printf("%.0f ", a[i][j]);
         printf("\n");
     }

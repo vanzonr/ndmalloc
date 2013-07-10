@@ -1,20 +1,20 @@
 /* 
- * amalloc2dspeed-amalloc.c - speed test
- * for amalloc dynamic array library
+ * ndmalloc2dspeed-ndmalloc.c - speed test
+ * for ndmalloc dynamic array library
  */
 
 #include <stdlib.h>
-#include "amalloc.h"
+#include "ndmalloc.h"
 #include "pass.h"
 #include "ndef.h"
 
-double case_amalloc(int repeat)
+double case_ndmalloc(int repeat)
 {
     int i, j;
     double d = 0.0;
-    float** a = amalloc(sizeof(float), 2, n, n);
-    float** b = amalloc(sizeof(float), 2, n, n);
-    float** c = amalloc(sizeof(float), 2, n, n);
+    float** a = ndmalloc(sizeof(float), 2, n, n);
+    float** b = ndmalloc(sizeof(float), 2, n, n);
+    float** c = ndmalloc(sizeof(float), 2, n, n);
     while (repeat--) {
         for (i=0;i<n;i++)
             for (j=0;j<n;j++) {
@@ -31,9 +31,9 @@ double case_amalloc(int repeat)
                 d += c[i][j];
         pass(&c[0][0],(float*)&d,&repeat);
     }
-    afree(a);
-    afree(b);
-    afree(c);
+    ndfree(a);
+    ndfree(b);
+    ndfree(c);
     return d;
 }
 

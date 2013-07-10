@@ -2,7 +2,7 @@
  * test_damalloc.h
  *
  * Header file for dynamically allocated multi-dimensional c arrays of
- * rank two, for comparison with amalloc.
+ * rank two, for comparison with ndmalloc.
  *
  * Copyright (c) 2013 Ramses van Zon
  */

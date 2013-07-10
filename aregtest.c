@@ -1,7 +1,6 @@
 /**********************************************************************/
 /*                                                                    */
-/*  aregtest.c: test code for a register of pointers that are known to
-    amalloc */
+/*  aregtest.c: test code for pointer register for ndmalloc           */
 /*                                                                    */
 /*  (C) Copyright 2013 Ramses van Zon                                 */
 /*                                                                    */

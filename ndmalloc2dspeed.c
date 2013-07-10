@@ -1,18 +1,18 @@
 /* 
- * amalloc2dspeed - speed test for amalloc dynamic array library
+ * ndmalloc2dspeed - speed test for ndmalloc dynamic array library
  */
 
 #include <stdlib.h>
 #include "test_damalloc.h"
 #include "cstopwatch.h"
-#include "amalloc.h"
+#include "ndmalloc.h"
 #include "pass.h"
 #include "ndef.h"
 
-#include "amalloc2dspeed-exact.h"
-#include "amalloc2dspeed-amalloc.h"
-#include "amalloc2dspeed-dynamic.h"
-#include "amalloc2dspeed-auto.h"
+#include "ndmalloc2dspeed-exact.h"
+#include "ndmalloc2dspeed-ndmalloc.h"
+#include "ndmalloc2dspeed-dynamic.h"
+#include "ndmalloc2dspeed-auto.h"
 
 int main(int argc, char**argv) 
 {
@@ -35,9 +35,9 @@ int main(int argc, char**argv)
         answer = STOPWATCH(case_exact,repeat);
         break;
     case 1: 
-        printf("amalloc");
+        printf("ndmalloc");
         fflush(stdout);
-        answer = STOPWATCH(case_amalloc, repeat);
+        answer = STOPWATCH(case_ndmalloc, repeat);
         break;
     case 2: 
          printf("automatic");

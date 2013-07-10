@@ -1,5 +1,5 @@
 /* 
- * amalloc2dspeed-exact.c - comparison case for array speed tests
+ * ndmalloc2dspeed-exact.c - comparison case for array speed tests
  */
 
 #include <stdlib.h>

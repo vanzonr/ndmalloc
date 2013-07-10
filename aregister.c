@@ -1,7 +1,7 @@
 /**********************************************************************/
 /*                                                                    */
 /*  aregister.c: design code for a register for pointer               */
-/*               to be used with amalloc.                             */
+/*               to be used with ndmalloc.                            */
 /*                                                                    */
 /*  (C) Copyright 2013 Ramses van Zon                                 */
 /*                                                                    */

@@ -1,7 +1,7 @@
 /* test3d.c */
 
 #include <stdio.h>
-#include "amalloc.h"
+#include "ndmalloc.h"
 
 /* Six different signatures of a print function for a tensor: */
 
@@ -47,7 +47,7 @@ void print_5(float *a, int n, int m, int l);
 void print_6(const float *a, int n, int m, int l);
 
 /*
- * print_7 takes a amalloc'ed pointer, which already contains its dimensions.
+ * print_7 takes a ndmalloc'ed pointer, which already contains its dimensions.
  * Not const-correct.
  */
 void print_7(float*** a);
@@ -65,22 +65,22 @@ int main()
 {
     float b[N][M][L];
     int i,j,k;
-    float*** a = amalloc(sizeof(float),3, N, M, L);
+    float*** a = ndmalloc(sizeof(float),3, N, M, L);
 
     for (i=0;i<N;i++)
         for (j=0;j<M;j++)
             for (k=0;k<L;k++)
                 a[i][j][k]=((i+1)*10+j+1)*10+k+1;
     
-    print_1(a, asize(a,0), asize(a,1), asize(a,2)); 
-    print_2((void*)a, asize(a,0), asize(a,1), asize(a,2));
-    print_3((void*)a, asize(a,0), asize(a,1), asize(a,2));
-    print_4((void*)a, asize(a,0), asize(a,1), asize(a,2));
-    print_5(adata(a), asize(a,0), asize(a,1), asize(a,2));
-    print_6(acdata(a), asize(a,0), asize(a,1), asize(a,2));
+    print_1(a, ndsize(a,0), ndsize(a,1), ndsize(a,2)); 
+    print_2((void*)a, ndsize(a,0), ndsize(a,1), ndsize(a,2));
+    print_3((void*)a, ndsize(a,0), ndsize(a,1), ndsize(a,2));
+    print_4((void*)a, ndsize(a,0), ndsize(a,1), ndsize(a,2));
+    print_5(nddata(a), ndsize(a,0), ndsize(a,1), ndsize(a,2));
+    print_6(ndcdata(a), ndsize(a,0), ndsize(a,1), ndsize(a,2));
     print_7(a);
 
-    afree(a);
+    ndfree(a);
 
     for (i=0;i<N;i++)
         for (j=0;j<M;j++)
@@ -185,9 +185,9 @@ void print_6(const float *a, int n, int m, int l)
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void print_7(float*** a) 
 {
-    const int n = asize(a,0);
-    const int m = asize(a,1);
-    const int l = asize(a,2);
+    const int n = ndsize(a,0);
+    const int m = ndsize(a,1);
+    const int l = ndsize(a,2);
     int i, j, k;
     for (i=0;i<n;i++) {
         for (j=0;j<m;j++) {
