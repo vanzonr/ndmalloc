@@ -1,0 +1,10 @@
+change names:
+amalloc -> hmalloc (hyper malloc)
+testdarray -> test2d_1
+testdarray2 -> test2d_2
+testdarray2 -> test2d_3
+testdarray4 -> test3d_1
+testdarray5 -> test3d_2
+test1d -> test1d_1
+test2d -> test2d_4
+test3d -> test2d_3
