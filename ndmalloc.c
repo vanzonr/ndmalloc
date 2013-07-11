@@ -51,8 +51,6 @@ static short view_magic_mark = 0x1973; /* in headers of views on arrays  */
 
 /*
  * INTERNAL ROUTINES
- *
- * (start with 'da_' and are static inline)
  */
 
 /***************************************************************************/
@@ -276,8 +274,8 @@ void* da_create_clear_data(size_t nmemb, size_t size)
 static 
 void* da_recreate_data(void* data, size_t nmemb, size_t size)
 {
- /* Reallocate memory for data with any required
-    extra space for bookkeeping, keeping old data values. */
+ /* Reallocate memory for data with any required extra space for
+    bookkeeping, keeping old data values. */
 
     if (data != NULL) {
         char* newdata = realloc((char*)data - header_size, 
@@ -335,6 +333,7 @@ const void* da_get_cdata(const void* ptr, short rank)
     return (const void*)result;
 }
 
+/***************************************************************************/
 
 /*
  * IMPLEMENTATION OF THE INTERFACE
@@ -344,25 +343,24 @@ const void* da_get_cdata(const void* ptr, short rank)
 
 void* sndmalloc(size_t size, short rank, const size_t* shape)
 {
- /* Creates a dynamically allocated multi- dimensional array of
+ /* Create a dynamically allocated multi- dimensional array of
     dimensions n[0] x n[1] ... x n['rank'-1], with elements of 'size'
-    bytes.  The dimensions are to be given as the variable-length
-    arguments.  The function allocates 'size'*n[0]*n[1]*..n['rank'-1]
-    bytes for the data, plus another n[0]*n[1]*...n[rank-2]
-    *sizeof(void*) bytes for the pointer-to-pointer structure that is
-    common for c-style arrays.  It also allocates internal buffers of
-    moderate size.  The pointer-to-pointer structure assumes that all
-    pointers are the same size.  The return value can be cast to a
-    TYPE* for an array of rank 1, TYPE** for rank 2, T*** for rank 3,
-    etc.  .This casted pointer can then be used in the same way a
-    c-style array is used, i.e., with repeated square bracket
-    indexing.  If the memory allocation fails, a NULL pointer is
-    returned.  The return value (or its casted version) can be used in
-    calls to 'ndrealloc', 'ndfree', 'ndsize', 'nddata', 'ndrank',
-    'ndshape', 'ndisknown'.  This works because an internal header
-    containing the information about the multi-dimensional structure
-    is associated with each dynamicaly allocated multi-dimensional
-    array. */
+    bytes.  The dimensions are given as the variable-length arguments.
+    The function allocates 'size'*n[0]*n[1]*..n['rank'-1] bytes for
+    the data, plus another n[0]*n[1]*...n[rank-2] *sizeof(void*) bytes
+    for the pointer-to-pointer structure that is common for c-style
+    arrays.  It also allocates internal buffers of moderate size.  The
+    pointer-to-pointer structure assumes that all pointers are the
+    same size.  The return value can be cast to a TYPE* for an array
+    of rank 1, TYPE** for rank 2, T*** for rank 3, etc.  .This casted
+    pointer can then be used in the same way a c-style array is used,
+    i.e., with repeated square bracket indexing.  If the memory
+    allocation fails, a NULL pointer is returned.  The return value
+    (or its casted version) can be used in calls to 'ndrealloc',
+    'ndfree', 'ndsize', 'nddata', 'ndrank', 'ndshape', 'ndisknown'.
+    This works because an internal header containing the information
+    about the multi-dimensional structure is associated with each
+    dynamicaly allocated multi-dimensional array. */
 
     size_t*       shapecopy;
     void*         array;
@@ -556,11 +554,17 @@ void* sndrealloc( void*          ptr,
         /* areg_remove(data); areg_add(date); TO DO*/
         da_create_header(array, rank, shapecopy, magic_mark, clue);
         da_destroy_shape(oldshape);
-        if (oldrank > 1) 
+        if (oldrank > 1) {
+            areg_remove(olddata, da_get_header_address(data)->clue); 
+            /* data was realloc'ed, so data->clue is still the clue for the old data */
             (void)da_destroy_array(ptr,oldclue);/*should check error status*/
             /* note: destroy array does an areg_remove of ptr */
-        else
+        } else
             areg_remove(ptr, oldclue);
+        if (rank > 1) {
+            areg_add(data, &clue);
+            da_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
+        }
         return array;
     }
 }
@@ -571,9 +575,9 @@ void* ndrealloc(void* ptr, size_t size, short rank, ...)
 {
  /* Variadic version of sndrealloc. */
 
-    void* result;
-    size_t* shape;
-    va_list arglist;
+    void*    result;
+    size_t*  shape;
+    va_list  arglist;
 
     va_start(arglist, rank);
     shape = da_create_shape(rank, arglist);

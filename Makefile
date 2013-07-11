@@ -1,5 +1,7 @@
 # Makefile for ndmalloc and its test programs
 
+       AR=ar rcs
+
        BIN=bin/
        OBJ=obj/
        LIB=lib/
@@ -26,13 +28,13 @@ NDMALLOCDBGCFLAGS=-DAREG_PTHREAD_LOCK -ansi -pedantic ${DBGCFLAGS}
         debug, debug_lib, debug_tst, \
         lib, all
 
-release_lib: ${LIB}libndmalloc.so
+release_lib: ${LIB}libndmalloc.so ${LIB}libndmalloc.a
 
 release_tst: ${BIN}testc2d ${BIN}testd2d ${BIN}testb2d ${BIN}testc3d  ${BIN}testd3d ${BIN}ndmalloc2dspeed ${BIN}testb3d ${BIN}aregtest ${BIN}testa1d ${BIN}testa2d ${BIN}testa3d  
 
 release: release_lib release_tst
 
-debug_lib: ${LIB}libndmalloc_dbg.so
+debug_lib: ${LIB}libndmalloc_dbg.so ${LIB}libndmalloc_dbg.a
 
 debug_tst: ${BIN}testc2d_dbg ${BIN}testd2d_dbg ${BIN}testb2d_dbg ${BIN}ndmalloc2dspeed_dbg ${BIN}testc3d_dbg  ${BIN}testd3d_dbg ${BIN}testb3d_dbg ${BIN}testa1d_dbg ${BIN}testa2d_dbg ${BIN}testa3d_dbg ${BIN}aregtest_dbg
 
@@ -61,6 +63,12 @@ ${LIBTAG}:
 
 ${OBJ}ndmalloc.o: ndmalloc.c ndmalloc.h areg.ic ${OBJTAG}
 	${CC} ${NDMALLOCCFLAGS} -fpic -c -o $@ $<
+
+${OBJ}ndmalloc-s.o: ndmalloc.c ndmalloc.h areg.ic ${OBJTAG}
+	${CC} ${NDMALLOCCFLAGS} -c -o $@ $<
+
+${LIB}libndmalloc.a: ${OBJ}ndmalloc-s.o ${LIBTAG}
+	${AR} $@ $<
 
 ${LIB}libndmalloc.so.1.0: ${OBJ}ndmalloc.o ${LIBTAG}
 	${CC} ${LDFLAGS} -shared  -Wl,-soname,libndmalloc.so.1 -o $@ $<
@@ -174,6 +182,12 @@ ${OBJ}ndmalloc2dspeed-exact.o: ndmalloc2dspeed-exact.c ndmalloc.h cstopwatch.h t
 ${OBJ}ndmalloc_dbg.o: ndmalloc.c ndmalloc.h areg.ic ${OBJTAG}
 	${CC} ${NDMALLOCDBGCFLAGS} -fpic -c -o $@ $<
 
+${OBJ}ndmalloc-s_dbg.o: ndmalloc.c ndmalloc.h areg.ic ${OBJTAG}
+	${CC} ${NDMALLOCDBGCFLAGS} -c -o $@ $<
+
+${LIB}libndmalloc_dbg.a: ${OBJ}ndmalloc-s_dbg.o ${LIBTAG}
+	${AR} $@ $<
+
 ${LIB}libndmalloc_dbg.so.1.0: ${OBJ}ndmalloc_dbg.o ${LIBTAG}
 	${CC} ${LDFLAGS} -shared  -Wl,-soname,libndmalloc_dbg.so.1 -o ${LIB}libndmalloc_dbg.so.1.0 ${OBJ}ndmalloc_dbg.o
 
@@ -277,4 +291,4 @@ ${OBJ}ndmalloc2dspeed_dbg.o: ndmalloc2dspeed.c ndmalloc.h  cstopwatch.h
 
 clean:
 	\rm -f ${NDMALLOC2DSPEEDDBGOBJS} ${NDMALLOC2DSPEEDOBJS}
-	(cd ${OBJ} && \rm -f testc3d_dbg.o testd3d_dbg.o testc3d.o testd3d.o testb3d_dbg.o ndmalloc.o testd2d_dbg.o testb3d.o testd2d.o testc2d_dbg.o testb2d_dbg.o testc2d.o test_damalloc_dbg.o testb2d.o aregtest.o testa1d.o testa2d.o testa3d.o testa1d_dbg.o testa2d_dbg.o testa3d_dbg.o ndmalloc_dbg.o aregtest_dbg.o)
+	(cd ${OBJ} && \rm -f testc3d_dbg.o testd3d_dbg.o testc3d.o testd3d.o testb3d_dbg.o ndmalloc.o testd2d_dbg.o testb3d.o testd2d.o testc2d_dbg.o testb2d_dbg.o testc2d.o test_damalloc_dbg.o testb2d.o aregtest.o testa1d.o testa2d.o testa3d.o testa1d_dbg.o testa2d_dbg.o testa3d_dbg.o ndmalloc_dbg.o aregtest_dbg.o ndmalloc-s.o ndmalloc-s_dbg.o)
