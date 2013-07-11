@@ -79,7 +79,7 @@ static void da_create_header( void*       array,
                               short       rank,
                               size_t*     shape,
                               short       mark,
-                              areg_clue_t clue)
+                              areg_clue_t clue )
 {  
     struct header* hdr = da_get_header_address(array);
     hdr->clue  = clue;
@@ -92,7 +92,11 @@ static void da_create_header( void*       array,
  * Internal function to create the pointer-to-pointer structure for any rank 
  */
  
-static void* da_create_array(void* data, size_t size, short rank, size_t* shape, areg_clue_t* clue)
+static void* da_create_array( void*        data, 
+                              size_t       size, 
+                              short        rank, 
+                              size_t*      shape, 
+                              areg_clue_t* clue)
 {
     if (rank <= 1) {
         
@@ -155,11 +159,23 @@ static int da_destroy_array(void* ptr, areg_clue_t clue)
  
 static size_t* da_create_shape(short rank, va_list arglist)
 {
-    size_t* shape = malloc(sizeof(size_t)*rank);    
-    if (shape != NULL) {
-        short i;
-        for (i = 0; i < rank; i++) 
-            shape[i] = va_arg(arglist, size_t);
+    size_t* shape;
+    if (rank > 1 ) {
+        shape = malloc(sizeof(size_t)*(rank+1));
+        if (shape != NULL) {
+            short i;
+            size_t fullsize = 1;
+            for (i = 0; i < rank; i++) {
+                size_t n = va_arg(arglist, size_t);
+                shape[i] = n;
+                fullsize *= n;
+            }
+            shape[rank]=fullsize;
+        }
+    } else {
+        shape = malloc(sizeof(size_t));
+        if (shape != NULL)
+            shape[0] = va_arg(arglist, size_t);
     }
     return shape;
 }
@@ -172,12 +188,18 @@ static size_t* da_copy_shape(short rank, const size_t* from)
 {
     size_t* shape = NULL;
     if (from != NULL) {
-        shape = malloc(sizeof(size_t)*rank);    
-        if (shape != NULL) {
-            short i;
-            for (i = 0; i < rank; i++) { 
-                shape[i] = from[i];
+        if (rank>1) {
+            shape = malloc(sizeof(size_t)*(rank+1));
+            if (shape != NULL) {
+                short i;
+                for (i = 0; i < rank+1; i++) { 
+                    shape[i] = from[i];
+                }
             }
+        } else {
+            shape = malloc(sizeof(size_t));    
+            if (shape != NULL) 
+                shape[0] = from[0];
         }
     }
     return shape;
@@ -198,14 +220,18 @@ static void da_destroy_shape(size_t* ptr)
  
 static size_t da_fullsize_shape(short rank, size_t* ptr)
 {
-    size_t fullsize;
-    short  i;
-    if (ptr == NULL) 
-        return 0;
-    fullsize = 1;
-    for (i=0; i<rank; i++)
-        fullsize *= ptr[i];
-    return fullsize;
+    if (rank > 1)
+        return ptr[rank];
+    else
+        return ptr[0];
+    /* size_t fullsize; */
+    /* short  i; */
+    /* if (ptr == NULL)  */
+    /*     return 0; */
+    /* fullsize = 1; */
+    /* for (i=0; i<rank; i++) */
+    /*     fullsize *= ptr[i]; */
+    /* return fullsize; */
 }
 
 /*
@@ -303,7 +329,7 @@ static const void* da_get_cdata(const void* ptr, short rank)
  *  'size'*n[0]*n[1]*..n['rank'-1] bytes for the data, plus another
  *  n[0]*n[1]*...n[rank-2]*sizeof(void*) bytes for the
  *  pointer-to-pointer structure that is common for c-style arrays.
- *  It also allocates internal buffers of moderate size (~64 bytes).
+ *  It also allocates internal buffers of moderate size.
  *  The pointer-to-pointer structure assumes that all pointers are the
  *  same size.  The return value can be cast to a TYPE* for an array
  *  of rank 1, TYPE** for rank 2, T*** for rank 3, etc.  .This casted
@@ -508,12 +534,19 @@ void ndfree(void* ptr)
 {
     if (ndisknown(ptr)) {
         struct header* hdr = da_get_header_address(ptr);
+        /* safe guard against freeing a 1d view, which can only be
+           created with nddata and ndcdata and should not be passed to
+           ndfree, as it is part of another nd array. */
+        if ( hdr->rank ==1 && (hdr->magic & 1) == 1 )
+            return;
         da_destroy_shape(hdr->shape);
+        /* for rank==1 data and array are the same */
+        /* views should not have their data freed */
         if ( (hdr->rank > 1) && ((hdr->magic & 1) == 0) ) {
             void* data = da_get_data(ptr, hdr->rank);
             da_destroy_data(data);
         }
-        (void)da_destroy_array(ptr, hdr->clue);  /* should check error status */
+        (void)da_destroy_array(ptr, hdr->clue);/* should check error status*/
     }
 }
 

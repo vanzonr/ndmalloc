@@ -28,13 +28,13 @@ NDMALLOCDBGCFLAGS=-DAREG_PTHREAD_LOCK -ansi -pedantic ${DBGCFLAGS}
 
 release_lib: ${LIB}libndmalloc.so
 
-release_tst: ${BIN}testc2d ${BIN}testd2d ${BIN}testb2d ${BIN}testc3d ${BIN}ndmalloc2dspeed ${BIN}testb3d ${BIN}aregtest ${BIN}testa1d ${BIN}testa2d ${BIN}testa3d  
+release_tst: ${BIN}testc2d ${BIN}testd2d ${BIN}testb2d ${BIN}testc3d  ${BIN}testd3d ${BIN}ndmalloc2dspeed ${BIN}testb3d ${BIN}aregtest ${BIN}testa1d ${BIN}testa2d ${BIN}testa3d  
 
 release: release_lib release_tst
 
 debug_lib: ${LIB}libndmalloc_dbg.so
 
-debug_tst: ${BIN}testc2d_dbg ${BIN}testd2d_dbg ${BIN}testb2d_dbg ${BIN}ndmalloc2dspeed_dbg ${BIN}testc3d_dbg ${BIN}testb3d_dbg ${BIN}testa1d_dbg ${BIN}testa2d_dbg ${BIN}testa3d_dbg ${BIN}aregtest_dbg
+debug_tst: ${BIN}testc2d_dbg ${BIN}testd2d_dbg ${BIN}testb2d_dbg ${BIN}ndmalloc2dspeed_dbg ${BIN}testc3d_dbg  ${BIN}testd3d_dbg ${BIN}testb3d_dbg ${BIN}testa1d_dbg ${BIN}testa2d_dbg ${BIN}testa3d_dbg ${BIN}aregtest_dbg
 
 debug: debug_lib debug_tst
 
@@ -101,6 +101,9 @@ ${BIN}testb2d: ${OBJ}testb2d.o ${LIB}libndmalloc.so ${BINTAG}
 ${BIN}testc3d: ${OBJ}testc3d.o ${LIB}libndmalloc.so ${BINTAG}
 	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
 
+${BIN}testd3d: ${OBJ}testd3d.o ${LIB}libndmalloc.so ${BINTAG}
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
+
 ${BIN}testb3d: ${OBJ}testb3d.o ${LIB}libndmalloc.so ${BINTAG}
 	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
 
@@ -129,6 +132,9 @@ ${OBJ}testb2d.o: testb2d.c ndmalloc.h ${OBJTAG}
 	${CC} ${CFLAGS} -c -o $@ $< 
 
 ${OBJ}testc3d.o: testc3d.c ndmalloc.h ${OBJTAG}
+	${CC} ${CFLAGS} -c -o $@ $< 
+
+${OBJ}testd3d.o: testd3d.c ndmalloc.h ${OBJTAG}
 	${CC} ${CFLAGS} -c -o $@ $< 
 
 ${OBJ}testb3d.o: testb3d.c ndmalloc.h ${OBJTAG}
@@ -199,6 +205,9 @@ ${BIN}testb2d_dbg: ${OBJ}testb2d_dbg.o ${LIB}libndmalloc_dbg.so ${BINTAG}
 ${BIN}testc3d_dbg: ${OBJ}testc3d_dbg.o ${LIB}libndmalloc_dbg.so ${BINTAG}
 	${CC} ${DBGLDFLAGS} -o $@ $< ${DBGLDLIBS}
 
+${BIN}testd3d_dbg: ${OBJ}testd3d_dbg.o ${LIB}libndmalloc_dbg.so ${BINTAG}
+	${CC} ${DBGLDFLAGS} -o $@ $< ${DBGLDLIBS}
+
 ${BIN}testb3d_dbg: ${OBJ}testb3d_dbg.o ${LIB}libndmalloc_dbg.so ${BINTAG}
 	${CC} ${DBGLDFLAGS} -o $@ $< ${DBGLDLIBS}
 
@@ -248,6 +257,9 @@ ${OBJ}testb2d_dbg.o: testb2d.c ndmalloc.h ${OBJTAG}
 ${OBJ}testc3d_dbg.o: testc3d.c ndmalloc.h ${OBJTAG}
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
+${OBJ}testd3d_dbg.o: testd3d.c ndmalloc.h ${OBJTAG}
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
 ${OBJ}testb3d_dbg.o: testb3d.c ndmalloc.h ${OBJTAG}
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
@@ -265,4 +277,4 @@ ${OBJ}ndmalloc2dspeed_dbg.o: ndmalloc2dspeed.c ndmalloc.h  cstopwatch.h
 
 clean:
 	\rm -f ${NDMALLOC2DSPEEDDBGOBJS} ${NDMALLOC2DSPEEDOBJS}
-	(cd ${OBJ} && \rm -f testc3d_dbg.o testc3d.o testb3d_dbg.o ndmalloc.o testd2d_dbg.o testb3d.o testd2d.o testc2d_dbg.o testb2d_dbg.o testc2d.o test_damalloc_dbg.o testb2d.o aregtest.o testa1d.o testa2d.o testa3d.o testa1d_dbg.o testa2d_dbg.o testa3d_dbg.o ndmalloc_dbg.o aregtest_dbg.o)
+	(cd ${OBJ} && \rm -f testc3d_dbg.o testd3d_dbg.o testc3d.o testd3d.o testb3d_dbg.o ndmalloc.o testd2d_dbg.o testb3d.o testd2d.o testc2d_dbg.o testb2d_dbg.o testc2d.o test_damalloc_dbg.o testb2d.o aregtest.o testa1d.o testa2d.o testa3d.o testa1d_dbg.o testa2d_dbg.o testa3d_dbg.o ndmalloc_dbg.o aregtest_dbg.o)

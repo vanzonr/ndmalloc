@@ -1,5 +1,5 @@
 change names:
-amalloc -> hmalloc (hyper malloc)
+amalloc -> ndmalloc (n-dimensional malloc)
 testdarray -> test2d_1
 testdarray2 -> test2d_2
 testdarray2 -> test2d_3
