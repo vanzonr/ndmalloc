@@ -369,8 +369,13 @@ void* sndmalloc(size_t size, short rank, const size_t* shape)
     if (array == NULL) {
         da_destroy_shape(shapecopy);
         da_destroy_data(data);
-    } else 
+    } else {
         da_create_header(array, rank, shapecopy, magic_mark, clue);
+        if (rank > 1) {
+            areg_add(data, &clue);
+            da_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
+        }
+    }
 
     return array;
 }
@@ -419,8 +424,13 @@ void* sndcalloc(size_t size, short rank, const size_t* shape)
     if (array == NULL) {
         da_destroy_shape(shapecopy);
         da_destroy_data(data);
-    } else
+    } else {
         da_create_header(array, rank, shapecopy, magic_mark, clue);
+        if (rank > 1) {
+            areg_add(data, &clue);
+            da_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
+        }
+    }
 
     return array;
 }
@@ -503,10 +513,12 @@ void* sndrealloc(void* ptr, size_t size, short rank, const size_t* shape)
         da_destroy_data(data);
         return NULL;
     } else {
+        /* areg_remove(data); areg_add(date); TO DO*/
         da_create_header(array, rank, shapecopy, magic_mark, clue);
         da_destroy_shape(oldshape);
         if (oldrank > 1) 
-            (void)da_destroy_array(ptr, oldclue);  /* should check error status */
+            (void)da_destroy_array(ptr,oldclue);/*should check error status*/
+            /* note: destroy array does an areg_remove of ptr */
         else
             areg_remove(ptr, oldclue);
         return array;
@@ -544,6 +556,7 @@ void ndfree(void* ptr)
         /* views should not have their data freed */
         if ( (hdr->rank > 1) && ((hdr->magic & 1) == 0) ) {
             void* data = da_get_data(ptr, hdr->rank);
+            areg_remove(data, da_get_header_address(data)->clue);
             da_destroy_data(data);
         }
         (void)da_destroy_array(ptr, hdr->clue);/* should check error status*/
