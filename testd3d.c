@@ -33,7 +33,7 @@ void print( const ARRAY3D(float) array)
             printf("%*s",(int)(4*i),"");
             for (k = 0; k < shape[2]; k++) {
                 printf("%8.2f ",array[i][j][k]);
-            }
+            } 
             printf("\n");
         }
         printf("\n");
@@ -42,10 +42,10 @@ void print( const ARRAY3D(float) array)
 }
 
 int main()
-{
-    ARRAY3D(float) a = (float*const*const*)ndmalloc(sizeof(float), 3, 5,4,3);
-    fill((float*)nddata((float***)a));
-    print(a);
-    ndfree((float***)a);
+{  
+    ARRAY3D(float) a = (ARRAY3D(float))ndmalloc(sizeof(float), 3, 5,4,3);
+    fill(nddata((void*)a));
+    print((const ARRAY3D(float))a);
+    ndfree((void*)a);
     return 0;
 }

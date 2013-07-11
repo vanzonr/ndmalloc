@@ -9,9 +9,9 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
-#include "areg.ic"
+#include "ndreg.ic"
 
-/* Note: in areg.ic, AREG_INT should set both a_index_t and areg_clue_t. */
+/* Note: in ndreg.ic, NDREG_INT should set ndreg_int, and defaults to int. */
 
 /***************************************************************************/
 
@@ -23,10 +23,10 @@ struct header {
     check that we do indeed have a dynamically allocated array, and to
     indicate whether this array is only a view on another array. */
 
-    areg_clue_t  clue;         /* clue for areg                  */
-    short        rank;         /* number of dimensions           */
-    short        magic;        /* magic_mark                     */
-    size_t*      shape;        /* What are those dimensions?     */
+    ndreg_int  clue;         /* clue for ndreg                 */
+    short      rank;         /* number of dimensions           */
+    short      magic;        /* magic_mark                     */
+    size_t*    shape;        /* What are those dimensions?     */
 };
 
 /* Define the magic mark to be embedded in the struct header.  These
@@ -56,7 +56,7 @@ static short view_magic_mark = 0x1973; /* in headers of views on arrays  */
 /***************************************************************************/
  
 static 
-struct header* da_get_header_address(const void* array)
+struct header* nd_internal_get_header_address(const void* array)
 {    
  /* Get the hidden header given the pointer-to-pointer array */
 
@@ -66,17 +66,17 @@ struct header* da_get_header_address(const void* array)
 /***************************************************************************/
  
 static 
-void da_create_header( void*       array,
-                       short       rank,
-                       size_t*     shape,
-                       short       mark,
-                       areg_clue_t clue )
+void nd_internal_create_header( void*      array,
+                                short      rank,
+                                size_t*    shape,
+                                short      mark,
+                                ndreg_int  clue )
 {  
  /* Prepend a pointer with a header */
 
     struct header* hdr;
 
-    hdr = da_get_header_address(array);
+    hdr = nd_internal_get_header_address(array);
     hdr->clue  = clue;
     hdr->rank  = rank;
     hdr->magic = mark;
@@ -86,11 +86,11 @@ void da_create_header( void*       array,
 /***************************************************************************/
  
 static 
-void* da_create_array( void*        data, 
-                       size_t       size, 
-                       short        rank, 
-                       size_t*      shape, 
-                       areg_clue_t* clue)
+void* nd_internal_create_array( void*       data, 
+                                size_t      size, 
+                                short       rank, 
+                                size_t*     shape, 
+                                ndreg_int*  clue )
 {
  /* Create the pointer-to-pointer structure for any rank */
 
@@ -103,7 +103,7 @@ void* da_create_array( void*        data,
 
     if (rank <= 1) {
         
-        if (areg_add(data, clue) == AREG_SUCCESS)
+        if (ndreg_add(data, clue) == NDREG_SUCCESS)
             return data;
         else
             return NULL;
@@ -131,7 +131,7 @@ void* da_create_array( void*        data,
         for (j = 0; j < ntot; j++)
             ptr[j] = (char**)((char*)data 
                               + size*j*shape[rank-1]);
-        (void)areg_add(result, clue); /* should check error status */
+        (void)ndreg_add(result, clue); /* should check error status */
         return (void*)result;
     }
 }
@@ -139,21 +139,21 @@ void* da_create_array( void*        data,
 /***************************************************************************/
  
 static 
-int da_destroy_array(void* ptr, areg_clue_t clue)
+int nd_internal_destroy_array(void* ptr, ndreg_int clue)
 {
- /* Release the memory allocated by da_create_array */
+ /* Release the memory allocated by nd_internal_create_array */
 
     if (ptr != NULL) {
         free((char*)ptr - header_size);
-        return areg_remove(ptr, clue);
+        return ndreg_remove(ptr, clue);
     } else 
-        return AREG_SUCCESS;
+        return NDREG_SUCCESS;
 }
 
 /***************************************************************************/
  
 static 
-size_t* da_create_shape(short rank, va_list arglist)
+size_t* nd_internal_create_shape(short rank, va_list arglist)
 {
  /* Create a dimension array from a va_list */
 
@@ -185,7 +185,7 @@ size_t* da_create_shape(short rank, va_list arglist)
 /***************************************************************************/
 
 static 
-size_t* da_copy_shape(short rank, const size_t* from)
+size_t* nd_internal_copy_shape(short rank, const size_t* from)
 {
  /* Copy a dimension array */
 
@@ -214,9 +214,9 @@ size_t* da_copy_shape(short rank, const size_t* from)
 /***************************************************************************/
 
 static 
-void da_destroy_shape(size_t* ptr)
+void nd_internal_destroy_shape(size_t* ptr)
 {
- /* Release the memory allocated by da_create_shape */
+ /* Release the memory allocated by nd_internal_create_shape */
 
     free(ptr);
 }
@@ -224,7 +224,7 @@ void da_destroy_shape(size_t* ptr)
 /***************************************************************************/
  
 static 
-size_t da_fullsize_shape(short rank, size_t* ptr)
+size_t nd_internal_fullsize_shape(short rank, size_t* ptr)
 {
  /* Determine total number of elements in a shape */
 
@@ -237,7 +237,7 @@ size_t da_fullsize_shape(short rank, size_t* ptr)
 /***************************************************************************/
 
 static 
-void* da_create_data(size_t nmemb, size_t size)
+void* nd_internal_create_data(size_t nmemb, size_t size)
 {
  /* Allocate uninitialized memory for data. */
 
@@ -253,7 +253,7 @@ void* da_create_data(size_t nmemb, size_t size)
 /***************************************************************************/
  
 static 
-void* da_create_clear_data(size_t nmemb, size_t size)
+void* nd_internal_create_clear_data(size_t nmemb, size_t size)
 {
  /* Allocate zero-initialized memory for data with any required extra
     space for bookkeeping. */
@@ -272,7 +272,7 @@ void* da_create_clear_data(size_t nmemb, size_t size)
 /***************************************************************************/
  
 static 
-void* da_recreate_data(void* data, size_t nmemb, size_t size)
+void* nd_internal_recreate_data(void* data, size_t nmemb, size_t size)
 {
  /* Reallocate memory for data with any required extra space for
     bookkeeping, keeping old data values. */
@@ -284,16 +284,16 @@ void* da_recreate_data(void* data, size_t nmemb, size_t size)
             newdata += header_size;
         return (void*)newdata;
     } else
-        return da_create_data(nmemb,size);
+        return nd_internal_create_data(nmemb,size);
 }
 
 /***************************************************************************/
  
 static 
-void da_destroy_data(void* data)
+void nd_internal_destroy_data(void* data)
 {
- /* Release the memory allocated by da_create_data, da_recreate_data,
-    or da_ccreate_data */
+ /* Release the memory allocated by nd_internal_create_data,
+    nd_internal_recreate_data, or nd_internal_create_clear__data */
 
     if (data!=NULL)
         free((char*)data - header_size);
@@ -302,7 +302,7 @@ void da_destroy_data(void* data)
 /***************************************************************************/
  
 static 
-void* da_get_data(void* ptr, short rank)
+void* nd_internal_get_data(void* ptr, short rank)
 {
  /* Get the pointer to the data for an ndmalloc array. */
 
@@ -319,9 +319,9 @@ void* da_get_data(void* ptr, short rank)
 /***************************************************************************/
 
 static 
-const void* da_get_cdata(const void* ptr, short rank)
+const void* nd_internal_get_cdata(const void* ptr, short rank)
 {
- /* Const version of da_get_data ('const' really is contagious). */
+ /* Const version of nd_internal_get_data ('const' really is contagious). */
 
     void const*const* result;
     short i;
@@ -362,36 +362,36 @@ void* sndmalloc(size_t size, short rank, const size_t* shape)
     about the multi-dimensional structure is associated with each
     dynamicaly allocated multi-dimensional array. */
 
-    size_t*       shapecopy;
-    void*         array;
-    void*         data;
-    size_t        total_elements;
-    areg_clue_t   clue = AREG_NOCLUE;
+    size_t*     shapecopy;
+    void*       array;
+    void*       data;
+    size_t      total_elements;
+    ndreg_int   clue = NDREG_NOCLUE;
 
     if (shape == NULL) 
         return NULL;
 
-    shapecopy = da_copy_shape(rank, shape);  
+    shapecopy = nd_internal_copy_shape(rank, shape);  
     if (shapecopy == NULL)
        return NULL;
 
-    total_elements = da_fullsize_shape(rank, shapecopy);
+    total_elements = nd_internal_fullsize_shape(rank, shapecopy);
 
-    data = da_create_data(total_elements, size);
+    data = nd_internal_create_data(total_elements, size);
     if (data == NULL) {
-        da_destroy_shape(shapecopy);
+        nd_internal_destroy_shape(shapecopy);
         return NULL;
     }
 
-    array = da_create_array(data, size, rank, shapecopy, &clue);
+    array = nd_internal_create_array(data, size, rank, shapecopy, &clue);
     if (array == NULL) {
-        da_destroy_shape(shapecopy);
-        da_destroy_data(data);
+        nd_internal_destroy_shape(shapecopy);
+        nd_internal_destroy_data(data);
     } else {
-        da_create_header(array, rank, shapecopy, magic_mark, clue);
+        nd_internal_create_header(array, rank, shapecopy, magic_mark, clue);
         if (rank > 1) {
-            areg_add(data, &clue);
-            da_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
+            ndreg_add(data, &clue);
+            nd_internal_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
         }
     }
 
@@ -409,10 +409,10 @@ void* ndmalloc(size_t size, short rank, ...)
     va_list  arglist;
 
     va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
+    shape = nd_internal_create_shape(rank, arglist);
     va_end(arglist);
     result = sndmalloc(size, rank, shape); /* calls non-variadic function */
-    da_destroy_shape(shape);
+    nd_internal_destroy_shape(shape);
 
     return result;
 }
@@ -424,36 +424,36 @@ void* sndcalloc(size_t size, short rank, const size_t* shape)
  /* Same functionality as ndmalloc, but also initialized the array to
     all zeros by calling 'calloc'. */
 
-    size_t*      shapecopy;
-    void*        array;
-    void*        data;
-    size_t       total_elements;
-    areg_clue_t  clue = AREG_NOCLUE;
+    size_t*    shapecopy;
+    void*      array;
+    void*      data;
+    size_t     total_elements;
+    ndreg_int  clue = NDREG_NOCLUE;
     
     if (shape == NULL) 
         return NULL;
     
-    shapecopy = da_copy_shape(rank, shape);  
+    shapecopy = nd_internal_copy_shape(rank, shape);  
     if (shapecopy == NULL)
        return NULL;
 
-    total_elements = da_fullsize_shape(rank, shapecopy);    
+    total_elements = nd_internal_fullsize_shape(rank, shapecopy);    
 
-    data = da_create_clear_data(total_elements, size);
+    data = nd_internal_create_clear_data(total_elements, size);
     if (data == NULL) {
-        da_destroy_shape(shapecopy);    
+        nd_internal_destroy_shape(shapecopy);    
         return NULL;
     }
 
-    array = da_create_array(data, size, rank, shapecopy, &clue);
+    array = nd_internal_create_array(data, size, rank, shapecopy, &clue);
     if (array == NULL) {
-        da_destroy_shape(shapecopy);
-        da_destroy_data(data);
+        nd_internal_destroy_shape(shapecopy);
+        nd_internal_destroy_data(data);
     } else {
-        da_create_header(array, rank, shapecopy, magic_mark, clue);
+        nd_internal_create_header(array, rank, shapecopy, magic_mark, clue);
         if (rank > 1) {
-            areg_add(data, &clue);
-            da_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
+            ndreg_add(data, &clue);
+            nd_internal_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
         }
     }
 
@@ -470,10 +470,10 @@ void* ndcalloc(size_t size, short rank, ...)
     va_list  arglist;
 
     va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
+    shape = nd_internal_create_shape(rank, arglist);
     va_end(arglist);
     result = sndcalloc(size, rank, shape); /* calls non-variadic function */
-    da_destroy_shape(shape);
+    nd_internal_destroy_shape(shape);
 
     return result;
 }
@@ -487,11 +487,11 @@ int ndisknown(const void* ptr)
 
     struct header* hdr;
 
-    hdr = da_get_header_address(ptr);
+    hdr = nd_internal_get_header_address(ptr);
 
     return hdr != NULL 
         && (hdr->magic | 1) == (magic_mark | 1)
-        && areg_lookup(ptr, &(hdr->clue)) == AREG_SUCCESS;
+        && ndreg_lookup(ptr, &(hdr->clue)) == NDREG_SUCCESS;
 }
 
 /***************************************************************************/
@@ -516,54 +516,55 @@ void* sndrealloc( void*          ptr,
     void*           data;
     size_t          total_elements;
     short           oldrank;
-    areg_clue_t     oldclue;
+    ndreg_int       oldclue;
     size_t*         oldshape;
     size_t*         shapecopy;
     struct header*  hdr;
-    areg_clue_t     clue = AREG_NOCLUE;
+    ndreg_int       clue = NDREG_NOCLUE;
     
     if (shape == NULL) 
         return NULL;
 
-    hdr = da_get_header_address(ptr);
+    hdr = nd_internal_get_header_address(ptr);
 
     /* can only reshape ndmalloc arrays, not pointer, not views */
     if (hdr == NULL || ! ndisknown(ptr) || (hdr->magic&1) == 1 )
       return NULL;
 
-    olddata  = da_get_data(ptr, rank);
+    olddata  = nd_internal_get_data(ptr, rank);
     oldshape = hdr->shape;
     oldrank  = hdr->rank;
     oldclue  = hdr->clue;
 
-    shapecopy = da_copy_shape(rank, shape);
+    shapecopy = nd_internal_copy_shape(rank, shape);
 
-    total_elements = da_fullsize_shape(rank, shapecopy);    
+    total_elements = nd_internal_fullsize_shape(rank, shapecopy);    
 
-    data = da_recreate_data(olddata, total_elements, size);
+    data = nd_internal_recreate_data(olddata, total_elements, size);
     if (data == NULL) {
-        da_destroy_shape(shapecopy);
+        nd_internal_destroy_shape(shapecopy);
         return NULL;
     }
-    array = da_create_array(data, size, rank, shapecopy, &clue);
+    array = nd_internal_create_array(data, size, rank, shapecopy, &clue);
     if (array == NULL) {
-        da_destroy_shape(shapecopy);
-        da_destroy_data(data);
+        nd_internal_destroy_shape(shapecopy);
+        /* we would want to reinstate olddata, but it has been recreated */
+        /* basically, if we get here, we are in bad shape.               */
+        nd_internal_destroy_data(data);       
         return NULL;
     } else {
-        /* areg_remove(data); areg_add(date); TO DO*/
-        da_create_header(array, rank, shapecopy, magic_mark, clue);
-        da_destroy_shape(oldshape);
+        nd_internal_create_header(array, rank, shapecopy, magic_mark, clue);
+        nd_internal_destroy_shape(oldshape);
         if (oldrank > 1) {
-            areg_remove(olddata, da_get_header_address(data)->clue); 
+            ndreg_remove(olddata, nd_internal_get_header_address(data)->clue); 
             /* data was realloc'ed, so data->clue is still the clue for the old data */
-            (void)da_destroy_array(ptr,oldclue);/*should check error status*/
-            /* note: destroy array does an areg_remove of ptr */
+            (void)nd_internal_destroy_array(ptr,oldclue);/*should check error status*/
+            /* note: destroy array does an ndreg_remove of ptr */
         } else
-            areg_remove(ptr, oldclue);
+            ndreg_remove(ptr, oldclue);
         if (rank > 1) {
-            areg_add(data, &clue);
-            da_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
+            ndreg_add(data, &clue); /* this could fail if we run out of memory */
+            nd_internal_create_header(data, 1, shapecopy+rank, view_magic_mark, clue);
         }
         return array;
     }
@@ -580,10 +581,10 @@ void* ndrealloc(void* ptr, size_t size, short rank, ...)
     va_list  arglist;
 
     va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
+    shape = nd_internal_create_shape(rank, arglist);
     va_end(arglist);
     result = sndrealloc(ptr, size, rank, shape);
-    da_destroy_shape(shape);
+    nd_internal_destroy_shape(shape);
 
     return result;
 }
@@ -598,21 +599,21 @@ void ndfree(void* ptr)
     void*           data;
 
     if (ndisknown(ptr)) {
-        hdr = da_get_header_address(ptr);
+        hdr = nd_internal_get_header_address(ptr);
         /* safe guard against freeing a 1d view, which can only be
            created with nddata and ndcdata and should not be passed to
            ndfree, as it is part of another nd array. */
         if ( hdr->rank ==1 && (hdr->magic & 1) == 1 )
             return;
-        da_destroy_shape(hdr->shape);
+        nd_internal_destroy_shape(hdr->shape);
         /* for rank==1 data and array are the same */
         /* views should not have their data freed */
         if ( (hdr->rank > 1) && ((hdr->magic & 1) == 0) ) {
-            data = da_get_data(ptr, hdr->rank);
-            areg_remove(data, da_get_header_address(data)->clue);
-            da_destroy_data(data);
+            data = nd_internal_get_data(ptr, hdr->rank);
+            ndreg_remove(data, nd_internal_get_header_address(data)->clue);
+            nd_internal_destroy_data(data);
         }
-        (void)da_destroy_array(ptr, hdr->clue);/* should check error status*/
+        (void)nd_internal_destroy_array(ptr, hdr->clue);/* should check error status*/
     }
 }
 
@@ -624,11 +625,11 @@ int ndisview(const void* ptr)
 
     struct header* hdr;
 
-    hdr = da_get_header_address(ptr);
+    hdr = nd_internal_get_header_address(ptr);
 
     return hdr != NULL 
         && hdr->magic == view_magic_mark
-        && areg_lookup(ptr, &(hdr->clue)) == AREG_SUCCESS;
+        && ndreg_lookup(ptr, &(hdr->clue)) == NDREG_SUCCESS;
 }
 
 /***************************************************************************/
@@ -639,7 +640,7 @@ size_t ndsize(const void* ptr, short dim)
 
     struct header* hdr;
 
-    hdr = da_get_header_address(ptr);
+    hdr = nd_internal_get_header_address(ptr);
     if (dim < hdr->rank)
         return hdr->shape[dim];
     else
@@ -656,9 +657,9 @@ void* nddata(void* ptr)
 
     const struct header* hdr;
 
-    hdr = da_get_header_address(ptr);
+    hdr = nd_internal_get_header_address(ptr);
 
-    return da_get_data(ptr, hdr->rank);
+    return nd_internal_get_data(ptr, hdr->rank);
 }
 
 /***************************************************************************/
@@ -667,7 +668,7 @@ const void* ndcdata(const void* ptr)
 {
  /* Const version of nddata. */
 
-    return da_get_cdata(ptr, da_get_header_address(ptr)->rank);
+    return nd_internal_get_cdata(ptr, nd_internal_get_header_address(ptr)->rank);
 }
 
 /***************************************************************************/
@@ -678,7 +679,7 @@ short ndrank(const void* ptr)
     if 'ptr' was not created with (s)ndmalloc, (s)acalloc, (s)arealloc
     or (s)aview. */
 
-    return da_get_header_address(ptr)->rank;
+    return nd_internal_get_header_address(ptr)->rank;
 }
 
 /***************************************************************************/
@@ -688,7 +689,7 @@ const size_t* ndshape(const void* ptr)
  /* Get the shape of the nd array 'ptr'.  The result is undefined if
     no nd array is associated with 'ptr'. */
 
-    return da_get_header_address(ptr)->shape;
+    return nd_internal_get_header_address(ptr)->shape;
 }
 
 /***************************************************************************/
@@ -700,9 +701,9 @@ size_t ndfullsize(const void* ptr)
 
     struct header* hdr;
 
-    hdr = da_get_header_address(ptr);
+    hdr = nd_internal_get_header_address(ptr);
 
-    return da_fullsize_shape(hdr->rank, hdr->shape);
+    return nd_internal_fullsize_shape(hdr->rank, hdr->shape);
 }
 
 /***************************************************************************/
@@ -714,31 +715,31 @@ void* sndview( void*          data,
 {
  /* Allocate a multi-dimensional view on existing data. */
 
-    size_t*      shapecopy;
-    void*        array;
-    areg_clue_t  clue = AREG_NOCLUE;
+    size_t*    shapecopy;
+    void*      array;
+    ndreg_int  clue = NDREG_NOCLUE;
 
     if (shape == NULL || data == NULL || rank <= 1) 
         return NULL;
 
-    shapecopy = da_copy_shape(rank, shape);  
+    shapecopy = nd_internal_copy_shape(rank, shape);  
     if (shapecopy == NULL)
        return NULL;
 
     /* if data is known array, use its data: */
     if (ndisknown(data)) {
         /* check that there are enough elements */
-        if (ndfullsize(data) < da_fullsize_shape(rank, shapecopy))
+        if (ndfullsize(data) < nd_internal_fullsize_shape(rank, shapecopy))
            return NULL;
         /* get the data, not the pointer-to-pointer */
         data = nddata(data);
     }
 
-    array = da_create_array(data, size, rank, shapecopy, &clue);
+    array = nd_internal_create_array(data, size, rank, shapecopy, &clue);
     if (array == NULL) 
-        da_destroy_shape(shapecopy);
+        nd_internal_destroy_shape(shapecopy);
     else 
-        da_create_header(array, rank, shapecopy, view_magic_mark, clue);
+        nd_internal_create_header(array, rank, shapecopy, view_magic_mark, clue);
 
     return array;
 }
@@ -753,10 +754,10 @@ void* ndview(void* data, size_t size, short rank, ...)
     va_list  arglist;
 
     va_start(arglist, rank);
-    shape = da_create_shape(rank, arglist);
+    shape = nd_internal_create_shape(rank, arglist);
     va_end(arglist);
     result = sndview(data, size, rank, shape);
-    da_destroy_shape(shape);
+    nd_internal_destroy_shape(shape);
 
     return result;
 }

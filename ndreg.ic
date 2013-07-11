@@ -1,22 +1,22 @@
 /*
- * areg.ic: register of pointers known to amalloc. Included by amalloc.c.
+ * ndreg.ic: register of pointers known to amalloc. Included by amalloc.c.
  *                                                                    
- * int areg_add(areg_ptr_t ptr, areg_clue_t* clue); 
+ * int ndreg_add(ndreg_ptr_t ptr, ndreg_int* clue); 
  *
  *   Registers a pointer.  Returns a clue to where to find 'ptr' in
- *   '*clue'.  Returns AREG_SUCCESS if the addition was successful,
- *   and AREG_FAILURE if it was not.
+ *   '*clue'.  Returns NDREG_SUCCESS if the addition was successful,
+ *   and NDREG_FAILURE if it was not.
  *
- * int areg_remove(areg_ptr_t pointer, areg_clue_t clue);
+ * int ndreg_remove(ndreg_ptr_t pointer, ndreg_int clue);
  *   Removes the pointer-value pair associated with 'ptr'.  Pass in a
- *   clue that was given by areg_add() for faster lookup, or '0'.
- *   Returns AREG_SUCCESS if pair is removed and 1 if 'pointer' was
+ *   clue that was given by ndreg_add() for faster lookup, or '0'.
+ *   Returns NDREG_SUCCESS if pair is removed and 1 if 'pointer' was
  *   not found.
  *
- * int areg_lookup(areg_ptr_t pointer, areg_clue_t* clue); 
- *   Checks if 'ptr' was registerd.  Pass in clue given by areg_add()
- *   for faster lookup. Returns AREG_SUCCESS if pointer is found,
- *   AREG_FAILURE if it is not. Updates clue for faster repeated
+ * int ndreg_lookup(ndreg_ptr_t pointer, ndreg_int* clue); 
+ *   Checks if 'ptr' was registerd.  Pass in clue given by ndreg_add()
+ *   for faster lookup. Returns NDREG_SUCCESS if pointer is found,
+ *   NDREG_FAILURE if it is not. Updates clue for faster repeated
  *   lookups.
  *
  * (C) Copyright 2013 Ramses van Zon
@@ -25,33 +25,32 @@
 #include <string.h>                   /* for memmove and memcpy       */
 #include <stdlib.h>                   /* for malloc and realloc       */
 
-/* AREG_INT sets both areg_clue_t and areg_index_t */
-#ifndef AREG_INT
-#define AREG_INT unsigned int
+/* NDREG_INT sets both ndreg_int and ndreg_index_t */
+#ifndef NDREG_INT
+#define NDREG_INT unsigned int
 #endif
 
-typedef const void* areg_ptr_t;       /* store constant pointers only */
-typedef AREG_INT    areg_clue_t;      /* use clues for faster lookup  */
-typedef AREG_INT    areg_index_t;     /* number of stored pointers must fit in this */
+typedef const void* ndreg_ptr_t;       /* store constant pointers only */
+typedef NDREG_INT    ndreg_int;        /* use clues for faster lookup  */
 
-#define AREG_NOCLUE ((areg_clue_t)0)  /* error/ignorance              */
-#define AREG_SUCCESS   0              /* function call successful     */
-#define AREG_FAILURE   1              /* an error occurred            */
-#define AREG_NOT_FOUND 2              /* entry not found              */
+#define NDREG_NOCLUE   ((ndreg_int)0)  /* error/ignorance              */
+#define NDREG_SUCCESS   0              /* function call successful     */
+#define NDREG_FAILURE   1              /* an error occurred            */
+#define NDREG_NOT_FOUND 2              /* entry not found              */
 
 /* For the routines to be thread safe, use pthreads or openmp locks.  */
 
-#if defined(AREG_PTHREAD_LOCK)
+#if defined(NDREG_PTHREAD_LOCK)
   #include <pthread.h>    
-  static pthread_mutex_t areg_mutex = PTHREAD_MUTEX_INITIALIZER;
+  static pthread_mutex_t ndreg_mutex = PTHREAD_MUTEX_INITIALIZER;
 #elif defined(_OPENMP)
-  #ifndef AREG_OPENMP_LOCK
-  #define AREG_OPENMP_LOCK
+  #ifndef NDREG_OPENMP_LOCK
+  #define NDREG_OPENMP_LOCK
   #endif
   #include <omp.h>               
-  static omp_lock_t areg_mutex;
+  static omp_lock_t ndreg_mutex;
 #else
-  #ifdef AREG_OPENMP_LOCK
+  #ifdef NDREG_OPENMP_LOCK
   #error Compilation does not support openmp
   #else
   #warning Lockless implementation: not thread-safe.
@@ -64,37 +63,37 @@ typedef AREG_INT    areg_index_t;     /* number of stored pointers must fit in t
 #define nregmaxinit 512
 #define nreginc     512
 
-static areg_index_t  nregmax = nregmaxinit;
-static areg_index_t  nreg    = 0;
-static areg_ptr_t    keyreginit[nregmaxinit];
-static areg_ptr_t*   keyreg  = keyreginit;
+static ndreg_int    nregmax = nregmaxinit;
+static ndreg_int    nreg    = 0;
+static ndreg_ptr_t   keyreginit[nregmaxinit];
+static ndreg_ptr_t*  keyreg  = keyreginit;
 
 /**********************************************************************/
 
 static
-int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
+int internal_ndreg_find(ndreg_ptr_t key, ndreg_int clue, ndreg_int* index)
 {
  /* Find the index where 'key' is stored, starting at position 'clue'
-    (or at nreg/2 if clue=AREG_NOCLUE). If found, stores the index in
-    'index' and returns AREG_SUCCESS, if not found, stores the
-    insertion point in 'index' and returns AREG_NOT_FOUND.  Upon
-    error, it returns AREG_FAILURE. */
+    (or at nreg/2 if clue=NDREG_NOCLUE). If found, stores the index in
+    'index' and returns NDREG_SUCCESS, if not found, stores the
+    insertion point in 'index' and returns NDREG_NOT_FOUND.  Upon
+    error, it returns NDREG_FAILURE. */
 
-    areg_index_t start, lowi, midi, highi;
+    ndreg_int start, lowi, midi, highi;
     
     /* index must point somewhere */
     if (index == NULL) 
-        return AREG_FAILURE; 
+        return NDREG_FAILURE; 
 
     /* check clue first */
     if (0<=clue && clue < nreg && keyreg[clue] == key) {
         *index = clue;
-        return AREG_SUCCESS;
+        return NDREG_SUCCESS;
     }
 
     /* ensure start is reasonable */
     start = clue;
-    if (start == AREG_NOCLUE) 
+    if (start == NDREG_NOCLUE) 
         start = nreg/2;
     else if (nreg!=0 && start >= nreg) 
         start = nreg-1;
@@ -103,16 +102,16 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
        need to catch corner cases: empty list, list of 1 */
     if (nreg==0) {
         *index = 0;
-        return AREG_NOT_FOUND;
+        return NDREG_NOT_FOUND;
     } else if (nreg==1) {
         if (key > keyreg[0])
             *index = 1;
         else
             *index = 0;
         if (keyreg[*index] == key)
-            return AREG_SUCCESS;
+            return NDREG_SUCCESS;
         else
-            return AREG_NOT_FOUND;
+            return NDREG_NOT_FOUND;
     } 
 
     /* it also assumes key lies between keyreg[0] and keyreg[nreg-1],
@@ -120,18 +119,18 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
     if (key <= keyreg[0]) {
         *index = 0;
         if (keyreg[0] == key)
-            return AREG_SUCCESS;
+            return NDREG_SUCCESS;
         else
-            return AREG_NOT_FOUND;
+            return NDREG_NOT_FOUND;
     }
 
     if (keyreg[nreg-1] <= key) {
         if (keyreg[nreg-1] == key) {
             *index = nreg-1;
-            return AREG_SUCCESS;
+            return NDREG_SUCCESS;
         } else {
             *index = nreg;
-            return AREG_NOT_FOUND;
+            return NDREG_NOT_FOUND;
         }
     }
 
@@ -143,7 +142,7 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
     /* check the mid point first */
     if (keyreg[midi] == key) {
         *index = midi;
-        return AREG_SUCCESS;
+        return NDREG_SUCCESS;
     }
     /* we get here if reg[lowi].key < key < reg[highi].key */
     /* start bisection */
@@ -155,12 +154,12 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
         midi = (highi+lowi)/2;
         if (keyreg[midi] == key ) {
             *index = midi;
-            return AREG_SUCCESS;
+            return NDREG_SUCCESS;
         }
     }
     /* if we get here, highi is the insertion point*/
     *index=highi;
-    return AREG_NOT_FOUND;
+    return NDREG_NOT_FOUND;
 }
 
 /**********************************************************************/
@@ -168,16 +167,16 @@ int internal_areg_find(areg_ptr_t key, areg_clue_t clue, areg_index_t* index)
 static
 void internal_lock_on()
 {
-    #ifdef AREG_PTHREAD_LOCK
-    pthread_mutex_lock(&areg_mutex);
-    #elif defined(AREG_OPENMP_LOCK)
-    static int areg_mutex_initialized = 0;
-    if (areg_mutex_initialized) {
-        omp_set_lock(&areg_mutex);
+    #ifdef NDREG_PTHREAD_LOCK
+    pthread_mutex_lock(&ndreg_mutex);
+    #elif defined(NDREG_OPENMP_LOCK)
+    static int ndreg_mutex_initialized = 0;
+    if (ndreg_mutex_initialized) {
+        omp_set_lock(&ndreg_mutex);
     } else {
-        areg_mutex_initialized = 1;
-        omp_init_lock(&areg_mutex);
-        omp_set_lock(&areg_mutex);
+        ndreg_mutex_initialized = 1;
+        omp_init_lock(&ndreg_mutex);
+        omp_set_lock(&ndreg_mutex);
     }
     #endif
 }
@@ -187,29 +186,29 @@ void internal_lock_on()
 static
 void internal_lock_off()
 {
-    #ifdef AREG_PTHREAD_LOCK
-    pthread_mutex_unlock(&areg_mutex);
-    #elif defined(AREG_OPENMP_LOCK)
-    omp_unset_lock(&areg_mutex);
+    #ifdef NDREG_PTHREAD_LOCK
+    pthread_mutex_unlock(&ndreg_mutex);
+    #elif defined(NDREG_OPENMP_LOCK)
+    omp_unset_lock(&ndreg_mutex);
     #endif
 }
 
 /**********************************************************************/
 
 static
-int areg_add(areg_ptr_t key, areg_clue_t* clue) 
+int ndreg_add(ndreg_ptr_t key, ndreg_int* clue) 
 {
  /* Add a key and return a clue to where to find the key. Returns
     an error code, which is 0 if the addition was successful. If
     clue==NULL, no clue is given. */
 
-    areg_index_t  index  = 0;
-    int           exitcode = AREG_FAILURE;
+    ndreg_int  index  = 0;
+    int           exitcode = NDREG_FAILURE;
     int           notpresent;
-    areg_ptr_t*   newkeyreg;
+    ndreg_ptr_t*   newkeyreg;
    
     if (key == NULL)
-        return AREG_FAILURE;
+        return NDREG_FAILURE;
 
     internal_lock_on();
 
@@ -217,38 +216,38 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
     if (nreg == nregmax) { 
         
         if (nregmax == nregmaxinit) {
-            newkeyreg = malloc((nregmaxinit+nreginc)*sizeof(areg_ptr_t));
+            newkeyreg = malloc((nregmaxinit+nreginc)*sizeof(ndreg_ptr_t));
             if (newkeyreg!=NULL) 
-                memcpy(newkeyreg, keyreg, nregmaxinit*sizeof(areg_ptr_t));
+                memcpy(newkeyreg, keyreg, nregmaxinit*sizeof(ndreg_ptr_t));
         } else           
-            newkeyreg = realloc(keyreg,(nregmax+nreginc)*sizeof(areg_ptr_t));
+            newkeyreg = realloc(keyreg,(nregmax+nreginc)*sizeof(ndreg_ptr_t));
 
         if (newkeyreg == NULL) {           
             internal_lock_off();
-            return AREG_FAILURE;
+            return NDREG_FAILURE;
         }
         keyreg = newkeyreg;
         nregmax += nreginc;
     }
 
     /* find the ordered spot (gets put in index) */
-    notpresent = ( internal_areg_find(key, AREG_NOCLUE, &index) 
-                   == AREG_NOT_FOUND ); /* must not be found */
+    notpresent = ( internal_ndreg_find(key, NDREG_NOCLUE, &index) 
+                   == NDREG_NOT_FOUND ); /* must not be found */
     if (notpresent) {
-        /* index given nu internal_areg_find holds insertion point */
+        /* index given nu internal_ndreg_find holds insertion point */
         /* clear the spot */
         if (index<nreg)
-            memmove(keyreg+index+1, keyreg+index, (nreg-index)*sizeof(areg_ptr_t));
+            memmove(keyreg+index+1, keyreg+index, (nreg-index)*sizeof(ndreg_ptr_t));
         nreg++;
         /* put it there */
         keyreg[index]=key;
-        exitcode = AREG_SUCCESS;
+        exitcode = NDREG_SUCCESS;
     }
 
 
     if (clue != NULL) {
-        if (exitcode != AREG_SUCCESS) 
-            *clue = AREG_NOCLUE;
+        if (exitcode != NDREG_SUCCESS) 
+            *clue = NDREG_NOCLUE;
         else 
             *clue = index;
     }
@@ -261,24 +260,24 @@ int areg_add(areg_ptr_t key, areg_clue_t* clue)
 /**********************************************************************/
 
 static
-int areg_remove(areg_ptr_t key, areg_clue_t clue) 
+int ndreg_remove(ndreg_ptr_t key, ndreg_int clue) 
 {
- /* Remove the key 'key'.  Pass in a clue that was given by areg_add()
+ /* Remove the key 'key'.  Pass in a clue that was given by ndreg_add()
     for faster lookup.  Returns 0 if 'key' was removed and 1 if 'key'
     was not found. */
 
     int           exitcode;
-    areg_index_t  index;
+    ndreg_int  index;
 
     internal_lock_on();
 
-    exitcode = internal_areg_find(key, clue, &index);
+    exitcode = internal_ndreg_find(key, clue, &index);
 
-    if (exitcode == AREG_SUCCESS && index < nreg) {
+    if (exitcode == NDREG_SUCCESS && index < nreg) {
 
         if (index < nreg-1)  
             memmove(keyreg+index, keyreg+index+1, 
-                    (nreg-index-1)*sizeof(areg_ptr_t));
+                    (nreg-index-1)*sizeof(ndreg_ptr_t));
         nreg--;
     }    
 
@@ -289,11 +288,11 @@ int areg_remove(areg_ptr_t key, areg_clue_t clue)
 
             /* We just have to reallocate the buffer */
             /* - determine the new maximum number of registrants */
-            areg_index_t newnregmax = nregmax-nreginc; 
+            ndreg_int newnregmax = nregmax-nreginc; 
 
             /* - perform the reallocation */
-            areg_ptr_t* newkeyreg = realloc(keyreg, 
-                                            newnregmax*sizeof(areg_ptr_t));
+            ndreg_ptr_t* newkeyreg = realloc(keyreg, 
+                                            newnregmax*sizeof(ndreg_ptr_t));
             /* - check if successfull */
             if (newkeyreg != NULL) {
                 /* - if so, reset the number of registrants */
@@ -306,7 +305,7 @@ int areg_remove(areg_ptr_t key, areg_clue_t clue)
 
             /* We get here if we have to shrink to initial buffer */
             /* - copy everything back to that initial buffer */
-            memcpy(keyreginit, keyreg, nreg*sizeof(areg_ptr_t));
+            memcpy(keyreginit, keyreg, nreg*sizeof(ndreg_ptr_t));
 
             /* - release memory taken by newer buffer */
             free(keyreg);
@@ -327,32 +326,32 @@ int areg_remove(areg_ptr_t key, areg_clue_t clue)
 /**********************************************************************/
 
 static
-int areg_lookup(areg_ptr_t key, areg_clue_t* clue) 
+int ndreg_lookup(ndreg_ptr_t key, ndreg_int* clue) 
 {
- /* Looks for 'key'.  Pass in clue given by areg_add() for faster
-    areg_lookup. Returns AREG_FAILURE if key is not found. */
+ /* Looks for 'key'.  Pass in clue given by ndreg_add() for faster
+    ndreg_lookup. Returns NDREG_FAILURE if key is not found. */
 
-    int           exitcode;
-    areg_index_t  index;
+    int        exitcode;
+    ndreg_int  index;
 
     if (key == NULL) 
-        return AREG_FAILURE;
-    exitcode = internal_areg_find(key, *clue, &index);
-    if (exitcode == AREG_SUCCESS)
+        return NDREG_FAILURE;
+    exitcode = internal_ndreg_find(key, *clue, &index);
+    if (exitcode == NDREG_SUCCESS)
         *clue = index;
-    return exitcode==AREG_SUCCESS?AREG_SUCCESS:AREG_FAILURE;
+    return exitcode==NDREG_SUCCESS?NDREG_SUCCESS:NDREG_FAILURE;
 }
 
 /**********************************************************************/
 
-#ifdef O_AREGTEST
+#ifdef O_NDREGTEST
 /**********************************************************************/
 /*                                                                    */
 /*  Test code for a register of pointers that are known to amalloc    */
 /*                                                                    */
 /**********************************************************************/
 
-#define AREG_CHECK(x) if(x)fprintf(stderr,"Warning ("__FILE__":%d): '"#x"' failed!\n",__LINE__);
+#define NDREG_CHECK(x) if(x)fprintf(stderr,"Warning ("__FILE__":%d): '"#x"' failed!\n",__LINE__);
 
 #include <stdio.h>
 void ABC() 
@@ -374,18 +373,18 @@ int main()
     int* pa = &a;
     int* pc = &c;
     int* p=NULL;
-    areg_clue_t cluea;
-    areg_clue_t cluec;
+    ndreg_int cluea;
+    ndreg_int cluec;
 
     ABC();
 
-    AREG_CHECK(  areg_add(pa, &cluea)  );
+    NDREG_CHECK(  ndreg_add(pa, &cluea)  );
     ABC();
-    AREG_CHECK(  areg_add(pc, &cluec)  );
+    NDREG_CHECK(  ndreg_add(pc, &cluec)  );
     ABC();
 
-    AREG_CHECK(  areg_remove(pc, cluec)   );
-    AREG_CHECK(  areg_remove(pc, AREG_NOCLUE)  );
+    NDREG_CHECK(  ndreg_remove(pc, cluec)   );
+    NDREG_CHECK(  ndreg_remove(pc, NDREG_NOCLUE)  );
     ABC();
 
     #define nnumbers 1010000
@@ -394,16 +393,16 @@ int main()
     for (i=0;i<nnumbers;i++) {
         x[i]=i; y[i]=1000+i;
         if (i!=3) {
-            AREG_CHECK(  areg_add(x+i,NULL)  );
+            NDREG_CHECK(  ndreg_add(x+i,NULL)  );
         }
     }
     i=3;
-    AREG_CHECK(  areg_add(x+i,NULL)  );
+    NDREG_CHECK(  ndreg_add(x+i,NULL)  );
 
     i=3;
-    AREG_CHECK(  areg_add(x+i,NULL)  );
+    NDREG_CHECK(  ndreg_add(x+i,NULL)  );
 
-    AREG_CHECK(  areg_lookup(pa, &cluea)  );
+    NDREG_CHECK(  ndreg_lookup(pa, &cluea)  );
 
     return p?*p:cluec*y[0];
 }
