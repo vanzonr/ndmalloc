@@ -22,13 +22,13 @@ extern "C" {
  */
 void* ndmalloc   (size_t size, short rank, ...);
 void* ndcalloc   (size_t size, short rank, ...);
-void* ndrealloc  (void* ptr, size_t size, short rank, ...);
+void* ndrealloc  (void* ptr,  size_t size, short rank, ...);
 void* ndview     (void* data, size_t size, short rank, ...); 
 void  ndfree     (void* ptr);
 /* */
 void* sndmalloc  (size_t size, short rank, const size_t* n);
 void* sndcalloc  (size_t size, short rank, const size_t* n);
-void* sndrealloc (void* ptr, size_t size, short rank, const size_t* n);
+void* sndrealloc (void* ptr,  size_t size, short rank, const size_t* n);
 void* sndview    (void* data, size_t size, short rank, const size_t* n); 
 /* Description:
  *  The 'ndmalloc' function creates a dynamically allocated multi-
