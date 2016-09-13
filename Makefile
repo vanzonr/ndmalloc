@@ -1,6 +1,10 @@
 # Makefile for ndmalloc and its test programs
 
        AR=ar rcs
+       CP=cp -f
+       RM=rm -f
+       MD=mkdir -p
+       SL=ln -s
 
        BIN=bin/
        OBJ=obj/
@@ -16,6 +20,7 @@ DBGLDFLAGS=-g -gdwarf-2 -pthread -L${LIB} -O0
     LDLIBS=-lm -lndmalloc
  DBGLDLIBS=-lm -lndmalloc_dbg
 
+    PREFIX=/usr
 
    NDMALLOCCFLAGS=-DNDREG_PTHREAD_LOCK -DNDREG_INT=int -ansi -pedantic ${CFLAGS} -finline-limit=256 
 NDMALLOCDBGCFLAGS=-DNDREG_PTHREAD_LOCK -DNDREG_INT=int -ansi -pedantic ${DBGCFLAGS}
@@ -26,17 +31,25 @@ NDMALLOCDBGCFLAGS=-DNDREG_PTHREAD_LOCK -DNDREG_INT=int -ansi -pedantic ${DBGCFLA
 
 .PHONY: release, release_lib, release_tst, \
         debug, debug_lib, debug_tst, \
-        lib, all
+        lib, all, install
 
 release_lib: ${LIB}libndmalloc.so ${LIB}libndmalloc.a
 
-release_tst: ${BIN}testc2d ${BIN}testd2d ${BIN}testb2d ${BIN}testc3d  ${BIN}testd3d ${BIN}ndmalloc2dspeed ${BIN}testb3d ${BIN}ndregtest ${BIN}testa1d ${BIN}testa2d ${BIN}testa3d ${BIN}testd3d
+release_tst: ${BIN}testc2d ${BIN}testd2d ${BIN}testb2d ${BIN}testc3d ${BIN}testnc3d ${BIN}ndmalloc2dspeed ${BIN}testb3d ${BIN}ndregtest ${BIN}testa1d ${BIN}testa2d ${BIN}testa3d ${BIN}testd3d ${BIN}testnc3d
 
 release: release_lib release_tst
 
+install: ${LIB}libndmalloc.so.1.0 ${LIB}libndmalloc.a  ${LIB}libndmalloc_dbg.so.1.0 ${LIB}libndmalloc_dbg.a ndmalloc.h
+	${MD} ${PREFIX}/lib ${PREFIX}/include
+	${CP} ${LIB}libndmalloc.so.1.0 ${LIB}libndmalloc.a  ${LIB}libndmalloc_dbg.so.1.0 ${LIB}libndmalloc_dbg.a ${PREFIX}/lib
+	test -s ${PREFIX}/lib/libndmalloc.so.1 || ${SL} ${PREFIX}/lib/libndmalloc.so.1.0 ${PREFIX}/lib/libndmalloc.so.1
+	test -s ${PREFIX}/lib/libndmalloc.so || ${SL} ${PREFIX}/lib/libndmalloc.so.1 ${PREFIX}/lib/libndmalloc.so
+	${CP} ndmalloc.h ${PREFIX}/include
+	@test ${PREFIX} = /usr || echo "WARNING: Installation in non-standard location. Make sure ${PREFIX}/lib is included in the LD_LIBRARY_PATH variable, and ${PREFIX}/include is include in the CPATH variable!"
+
 debug_lib: ${LIB}libndmalloc_dbg.so ${LIB}libndmalloc_dbg.a
 
-debug_tst: ${BIN}testc2d_dbg ${BIN}testd2d_dbg ${BIN}testb2d_dbg ${BIN}ndmalloc2dspeed_dbg ${BIN}testc3d_dbg  ${BIN}testd3d_dbg ${BIN}testb3d_dbg ${BIN}testa1d_dbg ${BIN}testa2d_dbg ${BIN}testa3d_dbg ${BIN}ndregtest_dbg ${BIN}testd3d_dbg
+debug_tst: ${BIN}testc2d_dbg ${BIN}testd2d_dbg ${BIN}testb2d_dbg ${BIN}ndmalloc2dspeed_dbg ${BIN}testc3d_dbg  ${BIN}testd3d_dbg ${BIN}testnc3d_dbg ${BIN}testb3d_dbg ${BIN}testa1d_dbg ${BIN}testa2d_dbg ${BIN}testa3d_dbg ${BIN}ndregtest_dbg
 
 debug: debug_lib debug_tst
 
@@ -49,13 +62,13 @@ all: release debug
 #                                                                      #
 
 ${BINTAG}:
-	mkdir -p ${BINTAG}
+	${MD} ${BINTAG}
 
 ${OBJTAG}:
-	mkdir -p ${OBJTAG}
+	${MD} ${OBJTAG}
 
 ${LIBTAG}:
-	mkdir -p ${LIBTAG}
+	${MD} ${LIBTAG}
 
 #                                                                      #
 #  Release compilation                                                 #
@@ -112,6 +125,9 @@ ${BIN}testc3d: ${OBJ}testc3d.o ${LIB}libndmalloc.so ${BINTAG}
 ${BIN}testd3d: ${OBJ}testd3d.o ${LIB}libndmalloc.so ${BINTAG}
 	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
 
+${BIN}testnc3d: ${OBJ}testnc3d.o ${LIB}libndmalloc.so ${BINTAG}
+	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
+
 ${BIN}testb3d: ${OBJ}testb3d.o ${LIB}libndmalloc.so ${BINTAG}
 	${CC} ${LDFLAGS} -o $@ $< ${LDLIBS}
 
@@ -143,6 +159,9 @@ ${OBJ}testc3d.o: testc3d.c ndmalloc.h ${OBJTAG}
 	${CC} ${CFLAGS} -c -o $@ $< 
 
 ${OBJ}testd3d.o: testd3d.c ndmalloc.h ${OBJTAG}
+	${CC} ${CFLAGS} -c -o $@ $< 
+
+${OBJ}testnc3d.o: testnc3d.c ndmalloc.h ${OBJTAG}
 	${CC} ${CFLAGS} -c -o $@ $< 
 
 ${OBJ}testb3d.o: testb3d.c ndmalloc.h ${OBJTAG}
@@ -222,6 +241,9 @@ ${BIN}testc3d_dbg: ${OBJ}testc3d_dbg.o ${LIB}libndmalloc_dbg.so ${BINTAG}
 ${BIN}testd3d_dbg: ${OBJ}testd3d_dbg.o ${LIB}libndmalloc_dbg.so ${BINTAG}
 	${CC} ${DBGLDFLAGS} -o $@ $< ${DBGLDLIBS}
 
+${BIN}testnc3d_dbg: ${OBJ}testnc3d_dbg.o ${LIB}libndmalloc_dbg.so ${BINTAG}
+	${CC} ${DBGLDFLAGS} -o $@ $< ${DBGLDLIBS}
+
 ${BIN}testb3d_dbg: ${OBJ}testb3d_dbg.o ${LIB}libndmalloc_dbg.so ${BINTAG}
 	${CC} ${DBGLDFLAGS} -o $@ $< ${DBGLDLIBS}
 
@@ -274,6 +296,9 @@ ${OBJ}testc3d_dbg.o: testc3d.c ndmalloc.h ${OBJTAG}
 ${OBJ}testd3d_dbg.o: testd3d.c ndmalloc.h ${OBJTAG}
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
+${OBJ}testnc3d_dbg.o: testnc3d.c ndmalloc.h ${OBJTAG}
+	${CC} ${DBGCFLAGS} -c -o $@ $<
+
 ${OBJ}testb3d_dbg.o: testb3d.c ndmalloc.h ${OBJTAG}
 	${CC} ${DBGCFLAGS} -c -o $@ $<
 
@@ -290,5 +315,5 @@ ${OBJ}ndmalloc2dspeed_dbg.o: ndmalloc2dspeed.c ndmalloc.h  cstopwatch.h
 	${CC} ${DBGCFLAGS} -c -o $@ $< 
 
 clean:
-	\rm -f ${NDMALLOC2DSPEEDDBGOBJS} ${NDMALLOC2DSPEEDOBJS}
-	(cd ${OBJ} && \rm -f testc3d_dbg.o testd3d_dbg.o testc3d.o testd3d.o testb3d_dbg.o ndmalloc.o testd2d_dbg.o testb3d.o testd2d.o testc2d_dbg.o testb2d_dbg.o testc2d.o test_damalloc_dbg.o testb2d.o ndregtest.o testa1d.o testa2d.o testa3d.o testa1d_dbg.o testa2d_dbg.o testa3d_dbg.o ndmalloc_dbg.o ndregtest_dbg.o ndmalloc-s.o ndmalloc-s_dbg.o)
+	${RM} ${NDMALLOC2DSPEEDDBGOBJS} ${NDMALLOC2DSPEEDOBJS}
+	(cd ${OBJ} && \rm -f testc3d_dbg.o testd3d_dbg.otestnc3d_dbg.o testc3d.o testd3d.o testnc3d.o testb3d_dbg.o ndmalloc.o testd2d_dbg.o testb3d.o testd2d.o testc2d_dbg.o testb2d_dbg.o testc2d.o test_damalloc_dbg.o testb2d.o ndregtest.o testa1d.o testa2d.o testa3d.o testa1d_dbg.o testa2d_dbg.o testa3d_dbg.o ndmalloc_dbg.o ndregtest_dbg.o ndmalloc-s.o ndmalloc-s_dbg.o)
