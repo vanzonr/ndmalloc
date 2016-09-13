@@ -101,7 +101,7 @@ NDMALLOC2DSPEEDOBJS=${OBJ}ndmalloc2dspeed.o \
                    ${OBJ}ndmalloc2dspeed-exact.o \
                    ${OBJ}ndmalloc2dspeed-dynamic.o \
                    ${OBJ}ndmalloc2dspeed-ndmalloc.o \
-                   ${OBJ}pass.o \
+                   ${OBJ}optbarrier.o \
 	           ${OBJ}test_damalloc.o
 
 ${BIN}ndmalloc2dspeed: ${NDMALLOC2DSPEEDOBJS} ${LIB}libndmalloc.so ${BINTAG}
@@ -176,7 +176,7 @@ ${OBJ}testa2d.o: testa2d.c ndmalloc.h ${OBJTAG}
 ${OBJ}testa3d.o: testa3d.c ndmalloc.h ${OBJTAG}
 	${CC} ${CFLAGS} -c -o $@ $< 
 
-${OBJ}pass.o: pass.c ${OBJTAG}
+${OBJ}optbarrier.o: optbarrier.c ${OBJTAG}
 	${CC} -O0 -g -c -o $@ $<
 
 ${OBJ}ndmalloc2dspeed.o: ndmalloc2dspeed.c ndmalloc.h cstopwatch.h test_damalloc.h ${OBJTAG}
@@ -261,7 +261,7 @@ NDMALLOC2DSPEEDDBGOBJS=${OBJ}ndmalloc2dspeed_dbg.o \
                       ${OBJ}ndmalloc2dspeed-exact_dbg.o \
                       ${OBJ}ndmalloc2dspeed-dynamic_dbg.o \
                       ${OBJ}ndmalloc2dspeed-ndmalloc_dbg.o \
-                      ${OBJ}pass.o ${OBJ}test_damalloc_dbg.o 
+                      ${OBJ}optbarrier.o ${OBJ}test_damalloc_dbg.o 
 
 ${BIN}ndmalloc2dspeed_dbg: ${NDMALLOC2DSPEEDDBGOBJS} ${LIB}libndmalloc_dbg.so ${BINTAG}
 	${CC} ${DBGLDFLAGS} -o $@ ${NDMALLOC2DSPEEDDBGOBJS} ${DBGLDLIBS}

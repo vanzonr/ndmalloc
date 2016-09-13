@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 #include "test_damalloc.h"
-#include "pass.h"
+#include "optbarrier.h"
 #include "ndef.h"
 
 double case_dyn(int repeat)
@@ -20,15 +20,15 @@ double case_dyn(int repeat)
                 a[i][j] = i+repeat;
                 b[i][j] = j+repeat/2;
             }
-        pass(a[0],b[0],&repeat);
+        optbarrier(a[0],b[0],&repeat);
         for (i=0;i<n;i++)
             for (j=0;j<n;j++) 
                 c[i][j] = a[i][j]+b[i][j];
-        pass(c[0],c[0],&repeat);
+        optbarrier(c[0],c[0],&repeat);
         for (i=0;i<n;i++)
             for (j=0;j<n;j++) 
                 d += c[i][j];
-        pass(c[0],(float*)&d,&repeat);
+        optbarrier(c[0],(float*)&d,&repeat);
     }
     test_dafree2d(a,n);
     test_dafree2d(b,n);

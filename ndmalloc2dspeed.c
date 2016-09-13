@@ -6,7 +6,7 @@
 #include "test_damalloc.h"
 #include "cstopwatch.h"
 #include "ndmalloc.h"
-#include "pass.h"
+#include "optbarrier.h"
 #include "ndef.h"
 
 #include "ndmalloc2dspeed-exact.h"
