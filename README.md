@@ -11,7 +11,7 @@ Provide multi-dimensional arrays in C that know their shape and allow the standa
 /*
   simple_ndmalloc_example.c
 
-  This simeple example for ndmalloc creates an array of rank 2
+  This simple example for ndmalloc creates an array of rank 2
   (i.e. a matrix) with dimensions 4x6, which starts off as all
   zeros.  The program set a few elements, and then prints the matrix. 
 
