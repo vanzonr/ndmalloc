@@ -614,6 +614,9 @@ void ndfree(void* ptr)
             nd_internal_destroy_data(data);
         }
         (void)nd_internal_destroy_array(ptr, hdr->clue);/* should check error status*/
+    } else {
+        /* default to regular free is not a nd array */
+        free(ptr);
     }
 }
 

@@ -53,7 +53,9 @@ void* sndview    (void* data, size_t size, short rank, const size_t* n);
  *  with each dynamicaly allocated multi-dimensional array.
  *
  *  The 'ndfree' function frees up all the memory allocated for the
- *  multi-dimensional array associated with the pointer 'ptr'.
+ *  multi-dimensional array associated with the pointer 'ptr'. If
+ *  'ptr' is not associated with a multi-dimensional array, ndfree
+ *  attempts a call to the regular 'free' function from stdlib.h.
  *
  *  The 'ndview' function is similar to ndmalloc but only allocates the
  *  pointer-to pointer array, while the elements of the array should
